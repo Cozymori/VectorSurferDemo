@@ -1,0 +1,11 @@
+WEAVIATE_HOST=localhost
+WEAVIATE_PORT=8080
+WEAVIATE_GRPC_PORT=50051
+
+
+OPENAI_API_KEY=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
+VECTORIZER="huggingface"
+HF_MODEL_NAME="sentence-transformers/all-MiniLM-L6-v2"
+CUSTOM_PROPERTIES_FILE_PATH=.weaviate_properties
+
+RUN_ID=test-run-local-001
