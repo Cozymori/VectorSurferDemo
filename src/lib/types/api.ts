@@ -79,16 +79,18 @@ export interface TraceListItem {
 }
 
 export interface Span {
-  span_id: string;
-  parent_span_id?: string;
-  function_name: string;
-  status: string;
-  duration_ms: number;
-  start_time: string;
-  end_time: string;
-  depth: number;
-  offset_ms: number;
-  children?: Span[];
+    span_id: string;
+    parent_span_id?: string;
+    function_name: string;
+    status: string;
+    duration_ms: number;
+    start_time: string;
+    end_time: string;
+    depth: number;
+    offset_ms: number;
+    children?: Span[];
+    error_code?: string;
+    error_message?: string;
 }
 
 export interface TraceDetail {
