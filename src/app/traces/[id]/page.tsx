@@ -203,9 +203,9 @@ function TreeNode({ span, depth = 0 }: TreeNodeProps) {
       {/* Children */}
       {hasChildren && expanded && (
         <div className="ml-3">
-          {span.children!.map((child) => (
-            <TreeNode key={child.span_id} span={child as any} depth={depth + 1} />
-          ))}
+            {span.children!.map((child) => (
+                <TreeNode key={child.span_id} span={child as Span & { children?: Span[] }} depth={depth + 1} />
+            ))}
         </div>
       )}
     </div>
@@ -240,9 +240,9 @@ function TreeView({ traceId }: TreeViewProps) {
 
   return (
     <div className="space-y-1">
-      {tree.map((node: any) => (
-        <TreeNode key={node.span_id} span={node} />
-      ))}
+        {tree.map((node: Span & { children?: Span[] }) => (
+            <TreeNode key={node.span_id} span={node} />
+        ))}
     </div>
   );
 }
@@ -295,7 +295,7 @@ function AIAnalysisSection({ traceId, language }: AIAnalysisSectionProps) {
 }
 
 // ============ Main Page Component ============
-export default function TraceDetailPage() {
+export default function Page() {
   const params = useParams();
   const traceId = params.id as string;
   
