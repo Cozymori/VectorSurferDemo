@@ -25,8 +25,9 @@ import { useTrace, useTraceTree, useTraceAnalysis } from '@/lib/hooks/useApi';
 import { formatDuration, timeAgo, cn } from '@/lib/utils';
 import type { Span } from '@/lib/types/api';
 
-// ============ View Mode Types ============
+// ============ Types ============
 type ViewMode = 'waterfall' | 'tree';
+type SpanWithChildren = Span & { children?: SpanWithChildren[] };
 
 // ============ View Mode Selector ============
 interface ViewModeSelectorProps {
@@ -72,14 +73,13 @@ interface WaterfallViewProps {
 }
 
 function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
-  // Calculate offset for each span based on start time
   const processedSpans = useMemo(() => {
     if (spans.length === 0) return [];
     
-    const startTimes = spans.map(s => new Date(s.start_time).getTime());
+    const startTimes = spans.map((s: Span) => new Date(s.start_time).getTime());
     const minStart = Math.min(...startTimes);
     
-    return spans.map(span => {
+    return spans.map((span: Span) => {
       const spanStart = new Date(span.start_time).getTime();
       const offsetMs = spanStart - minStart;
       const offsetPercent = totalDuration > 0 ? (offsetMs / totalDuration) * 100 : 0;
@@ -88,7 +88,7 @@ function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
       return {
         ...span,
         offsetPercent,
-        widthPercent: Math.max(widthPercent, 0.5), // Minimum width for visibility
+        widthPercent: Math.max(widthPercent, 0.5),
       };
     });
   }, [spans, totalDuration]);
@@ -97,7 +97,6 @@ function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
     <div className="space-y-1">
       {processedSpans.map((span) => (
         <div key={span.span_id} className="flex items-center gap-3 py-1">
-          {/* Function name with indent */}
           <div
             className="w-52 shrink-0 truncate text-sm"
             style={{ paddingLeft: `${(span.depth || 0) * 16}px` }}
@@ -105,7 +104,6 @@ function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
             <code className="text-foreground">{span.function_name}</code>
           </div>
 
-          {/* Timeline bar */}
           <div className="flex-1 h-7 bg-muted rounded-lg relative overflow-hidden">
             <div
               className={cn(
@@ -128,12 +126,10 @@ function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
             </div>
           </div>
 
-          {/* Duration (shown outside if bar is too small) */}
           <div className="w-16 shrink-0 text-right text-xs text-muted-foreground">
             {formatDuration(span.duration_ms)}
           </div>
 
-          {/* Status */}
           <div className="w-20 shrink-0">
             <StatusBadge status={span.status} size="sm" />
           </div>
@@ -145,7 +141,7 @@ function WaterfallView({ spans, totalDuration }: WaterfallViewProps) {
 
 // ============ Tree Node Component ============
 interface TreeNodeProps {
-  span: Span & { children?: Span[] };
+  span: SpanWithChildren;
   depth?: number;
 }
 
@@ -155,14 +151,12 @@ function TreeNode({ span, depth = 0 }: TreeNodeProps) {
 
   return (
     <div>
-      {/* Node */}
       <div 
         className={cn(
           'flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors',
           depth > 0 && 'ml-6 border-l-2 border-border'
         )}
       >
-        {/* Expand/Collapse */}
         {hasChildren ? (
           <button
             onClick={() => setExpanded(!expanded)}
@@ -178,7 +172,6 @@ function TreeNode({ span, depth = 0 }: TreeNodeProps) {
           <div className="w-5" />
         )}
 
-        {/* Status indicator */}
         <div className={cn(
           'w-2 h-2 rounded-full shrink-0',
           span.status === 'SUCCESS' && 'bg-green-500',
@@ -186,26 +179,22 @@ function TreeNode({ span, depth = 0 }: TreeNodeProps) {
           span.status === 'CACHE_HIT' && 'bg-blue-500'
         )} />
 
-        {/* Function name */}
         <code className="text-sm font-medium flex-1 truncate">
           {span.function_name}
         </code>
 
-        {/* Duration */}
         <span className="text-xs text-muted-foreground shrink-0">
           {formatDuration(span.duration_ms)}
         </span>
 
-        {/* Status badge */}
         <StatusBadge status={span.status} size="sm" />
       </div>
 
-      {/* Children */}
       {hasChildren && expanded && (
         <div className="ml-3">
-            {span.children!.map((child) => (
-                <TreeNode key={child.span_id} span={child as Span & { children?: Span[] }} depth={depth + 1} />
-            ))}
+          {span.children!.map((child: SpanWithChildren) => (
+            <TreeNode key={child.span_id} span={child} depth={depth + 1} />
+          ))}
         </div>
       )}
     </div>
@@ -228,7 +217,7 @@ function TreeView({ traceId }: TreeViewProps) {
     );
   }
 
-  const tree = treeData?.tree || [];
+  const tree = (treeData?.tree || []) as SpanWithChildren[];
 
   if (tree.length === 0) {
     return (
@@ -240,9 +229,9 @@ function TreeView({ traceId }: TreeViewProps) {
 
   return (
     <div className="space-y-1">
-        {tree.map((node: Span & { children?: Span[] }) => (
-            <TreeNode key={node.span_id} span={node} />
-        ))}
+      {tree.map((node: SpanWithChildren) => (
+        <TreeNode key={node.span_id} span={node} />
+      ))}
     </div>
   );
 }
@@ -342,7 +331,6 @@ export default function Page() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Language Selector */}
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as 'en' | 'ko')}
@@ -352,7 +340,6 @@ export default function Page() {
             <option value="en">English</option>
           </select>
           
-          {/* View Mode */}
           <ViewModeSelector value={viewMode} onChange={setViewMode} />
         </div>
       </div>
@@ -413,7 +400,7 @@ export default function Page() {
         )}
       </div>
 
-      {/* Error Details (if any errors in trace) */}
+      {/* Error Details */}
       {trace.status === 'ERROR' && (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -422,8 +409,8 @@ export default function Page() {
           </div>
           <div className="space-y-2">
             {trace.spans
-              .filter(s => s.status === 'ERROR')
-              .map(span => (
+              .filter((s: Span) => s.status === 'ERROR')
+              .map((span: Span) => (
                 <div key={span.span_id} className="rounded-xl bg-background border border-border p-3">
                   <code className="text-sm font-medium">{span.function_name}</code>
                   {span.error_code && (
