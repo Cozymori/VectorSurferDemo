@@ -18,7 +18,7 @@ import {
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TimeRangeSelector } from '@/components/ui/TimeRangeSelector';
 import { useExecutions, useSlowestExecutions, useExecution } from '@/lib/hooks/useApi';
-import { useDashboardStore } from '@/lib/stores/useDashboardStore'; // [추가] 스토어 import
+import { useDashboardStore } from '@/lib/stores/useDashboardStore';
 import { formatDuration, timeAgo } from '@/lib/utils';
 import type { ExecutionFilters } from '@/lib/types/api';
 
@@ -72,8 +72,8 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
                             <div className="flex items-center gap-4">
                                 <StatusBadge status={execution.status} />
                                 <span className="text-sm text-muted-foreground">
-                  {timeAgo(execution.timestamp_utc)}
-                </span>
+                                    {timeAgo(execution.timestamp_utc)}
+                                </span>
                             </div>
 
                             {/* Function Info */}
@@ -131,8 +131,8 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
                                 <div>
                                     <p className="text-xs text-muted-foreground mb-2">Input</p>
                                     <pre className="rounded-lg bg-muted p-3 text-xs overflow-auto max-h-32">
-                    {execution.input_preview}
-                  </pre>
+                                        {execution.input_preview}
+                                    </pre>
                                 </div>
                             )}
 
@@ -141,8 +141,8 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
                                 <div>
                                     <p className="text-xs text-muted-foreground mb-2">Output</p>
                                     <pre className="rounded-lg bg-muted p-3 text-xs overflow-auto max-h-32">
-                    {execution.output_preview}
-                  </pre>
+                                        {execution.output_preview}
+                                    </pre>
                                 </div>
                             )}
                         </div>
@@ -185,9 +185,9 @@ function SlowestExecutionsSection() {
                             onClick={() => setSelectedSpan(exec.span_id)}
                             className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-3 hover:border-orange-500/50 transition-colors"
                         >
-              <span className="text-lg font-bold text-orange-500">
-                {formatDuration(exec.duration_ms)}
-              </span>
+                            <span className="text-lg font-bold text-orange-500">
+                                {formatDuration(exec.duration_ms)}
+                            </span>
                             <code className="text-xs text-muted-foreground truncate max-w-full">
                                 {exec.function_name}
                             </code>
@@ -208,9 +208,8 @@ function SlowestExecutionsSection() {
 export default function ExecutionsPage() {
     const [page, setPage] = useState(0);
 
-    // [수정 1] 로컬 state 대신 전역 스토어 사용
-    const { getTimeRangeMinutes } = useDashboardStore();
-    const timeRange = getTimeRangeMinutes();
+    // 전역 스토어에서 timeRangeMinutes 직접 사용
+    const { timeRangeMinutes } = useDashboardStore();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('');
@@ -221,7 +220,7 @@ export default function ExecutionsPage() {
         status: statusFilter || undefined,
         function_name: searchQuery || undefined,
         team: teamFilter || undefined,
-        time_range: timeRange, // 전역 설정된 시간 범위 적용
+        time_range: timeRangeMinutes,
     };
 
     const { data, isLoading } = useExecutions(PAGE_SIZE, page * PAGE_SIZE, appliedFilters);
@@ -246,7 +245,6 @@ export default function ExecutionsPage() {
                         Browse and filter function execution logs
                     </p>
                 </div>
-                {/* [수정 2] Props 제거 (내부적으로 Store 사용) */}
                 <TimeRangeSelector />
             </div>
 
@@ -306,8 +304,8 @@ export default function ExecutionsPage() {
 
                 {/* Results count */}
                 <span className="text-sm text-muted-foreground ml-auto">
-          {total} results
-        </span>
+                    {total} results
+                </span>
             </div>
 
             {/* Table */}
@@ -388,9 +386,9 @@ export default function ExecutionsPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex items-center justify-between border-t border-border px-4 py-3">
-            <span className="text-sm text-muted-foreground">
-              Page {page + 1} of {totalPages}
-            </span>
+                        <span className="text-sm text-muted-foreground">
+                            Page {page + 1} of {totalPages}
+                        </span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage((p) => Math.max(0, p - 1))}
