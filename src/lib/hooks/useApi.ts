@@ -4,14 +4,13 @@
 
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   analyticsService,
   executionsService,
   tracesService,
   functionsService,
   errorsService,
-  replayService,
   healerService,
 } from '../services/api';
 import type { ExecutionFilters } from '../types/api';
@@ -52,9 +51,6 @@ export const queryKeys = {
   errorSearch: (query: string, limit: number) => ['errors', 'search', query, limit] as const,
   errorSummary: (timeRange: number) => ['errors', 'summary', timeRange] as const,
   errorTrends: (timeRange: number, bucket: number) => ['errors', 'trends', timeRange, bucket] as const,
-
-  // Replay
-  replayableFunctions: ['replay', 'functions'] as const,
 
   // Healer
   healableFunctions: (timeRange: number) => ['healer', 'functions', timeRange] as const,
@@ -239,55 +235,6 @@ export function useErrorTrends(timeRange: number = 1440, bucket: number = 60) {
   return useQuery({
     queryKey: queryKeys.errorTrends(timeRange, bucket),
     queryFn: () => errorsService.getErrorTrends(timeRange, bucket),
-  });
-}
-
-// ============ Replay Hooks ============
-export function useReplayableFunctions() {
-  return useQuery({
-    queryKey: queryKeys.replayableFunctions,
-    queryFn: () => replayService.getReplayableFunctions(),
-  });
-}
-
-export function useRunReplay() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      functionFullName,
-      limit,
-      updateBaseline,
-    }: {
-      functionFullName: string;
-      limit?: number;
-      updateBaseline?: boolean;
-    }) => replayService.runReplay(functionFullName, limit, updateBaseline),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.replayableFunctions });
-    },
-  });
-}
-
-export function useRunSemanticReplay() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      functionFullName,
-      options,
-    }: {
-      functionFullName: string;
-      options?: {
-        limit?: number;
-        updateBaseline?: boolean;
-        similarityThreshold?: number;
-        semanticEval?: boolean;
-      };
-    }) => replayService.runSemanticReplay(functionFullName, options),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.replayableFunctions });
-    },
   });
 }
 
