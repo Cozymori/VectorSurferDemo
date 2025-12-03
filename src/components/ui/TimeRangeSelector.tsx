@@ -24,9 +24,9 @@ import { cn } from '@/lib/utils';
 export function TimeRangeSelector() {
     const {
         timeRange,
+        timeRangeLabel,
         setTimeRangePreset,
         setTimeRangeCustom,
-        getTimeRangeLabel,
     } = useDashboardStore();
 
     const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +40,7 @@ export function TimeRangeSelector() {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
+                setShowCustom(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -57,6 +58,12 @@ export function TimeRangeSelector() {
         if (preset) {
             setTimeRangePreset(preset.value);
         }
+    };
+
+    // 프리셋 버튼 클릭 핸들러
+    const handlePresetClick = (value: number) => {
+        setTimeRangePreset(value);
+        setIsOpen(false);
     };
 
     // 커스텀 범위 적용
@@ -100,8 +107,8 @@ export function TimeRangeSelector() {
             >
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
-          {getTimeRangeLabel()}
-        </span>
+                    {timeRangeLabel}
+                </span>
                 <ChevronDown className={cn(
                     'h-4 w-4 text-muted-foreground transition-transform',
                     isOpen && 'rotate-180'
@@ -118,8 +125,8 @@ export function TimeRangeSelector() {
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-sm font-medium">빠른 선택</span>
                                     <span className="text-xs text-primary font-semibold">
-                    {TIME_RANGE_PRESETS[currentSliderValue]?.label}
-                  </span>
+                                        {TIME_RANGE_PRESETS[currentSliderValue]?.label}
+                                    </span>
                                 </div>
 
                                 {/* 슬라이더 */}
@@ -130,20 +137,20 @@ export function TimeRangeSelector() {
                                     value={currentSliderValue}
                                     onChange={handleSliderChange}
                                     className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer
-                    [&::-webkit-slider-thumb]:appearance-none
-                    [&::-webkit-slider-thumb]:w-4
-                    [&::-webkit-slider-thumb]:h-4
-                    [&::-webkit-slider-thumb]:rounded-full
-                    [&::-webkit-slider-thumb]:bg-primary
-                    [&::-webkit-slider-thumb]:cursor-pointer
-                    [&::-webkit-slider-thumb]:transition-transform
-                    [&::-webkit-slider-thumb]:hover:scale-110
-                    [&::-moz-range-thumb]:w-4
-                    [&::-moz-range-thumb]:h-4
-                    [&::-moz-range-thumb]:rounded-full
-                    [&::-moz-range-thumb]:bg-primary
-                    [&::-moz-range-thumb]:border-0
-                    [&::-moz-range-thumb]:cursor-pointer"
+                                        [&::-webkit-slider-thumb]:appearance-none
+                                        [&::-webkit-slider-thumb]:w-4
+                                        [&::-webkit-slider-thumb]:h-4
+                                        [&::-webkit-slider-thumb]:rounded-full
+                                        [&::-webkit-slider-thumb]:bg-primary
+                                        [&::-webkit-slider-thumb]:cursor-pointer
+                                        [&::-webkit-slider-thumb]:transition-transform
+                                        [&::-webkit-slider-thumb]:hover:scale-110
+                                        [&::-moz-range-thumb]:w-4
+                                        [&::-moz-range-thumb]:h-4
+                                        [&::-moz-range-thumb]:rounded-full
+                                        [&::-moz-range-thumb]:bg-primary
+                                        [&::-moz-range-thumb]:border-0
+                                        [&::-moz-range-thumb]:cursor-pointer"
                                 />
 
                                 {/* 슬라이더 라벨 */}
@@ -160,9 +167,7 @@ export function TimeRangeSelector() {
                                 {TIME_RANGE_PRESETS.map((preset) => (
                                     <button
                                         key={preset.value}
-                                        onClick={() => {
-                                            setTimeRangePreset(preset.value);
-                                        }}
+                                        onClick={() => handlePresetClick(preset.value)}
                                         className={cn(
                                             'px-3 py-2 text-xs font-medium rounded-lg transition-all',
                                             timeRange.preset === preset.value && timeRange.mode === 'preset'
