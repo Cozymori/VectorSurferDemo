@@ -21,8 +21,6 @@ import type {
   ErrorLog,
   ErrorSummary,
   ErrorTrend,
-  ReplayResult,
-  ReplayableFunction,
   HealableFunction,
   DiagnosisResult,
   PaginatedResponse,
@@ -175,7 +173,7 @@ export const tracesService = {
     return fetchAPI(`/traces/${traceId}`);
   },
 
-  async getTraceTree(traceId: string): Promise<{ trace_id: string; tree: any[] }> {
+  async getTraceTree(traceId: string): Promise<{ trace_id: string; tree: unknown[] }> {
     if (USE_MOCK) {
       await delay(250);
       return { trace_id: traceId, tree: mock.mockTraceDetail.spans };
@@ -291,76 +289,6 @@ export const errorsService = {
       return mock.mockErrorTrends;
     }
     return fetchAPI(`/errors/trends?time_range=${timeRange}&bucket=${bucket}`);
-  },
-};
-
-// ============ Replay Service ============
-export const replayService = {
-  async getReplayableFunctions(): Promise<{ items: ReplayableFunction[]; total: number }> {
-    if (USE_MOCK) {
-      await delay(300);
-      return { items: mock.mockReplayableFunctions, total: mock.mockReplayableFunctions.length };
-    }
-    return fetchAPI('/replay/functions');
-  },
-
-  async runReplay(
-    functionFullName: string,
-    limit: number = 10,
-    updateBaseline: boolean = false
-  ): Promise<ReplayResult> {
-    if (USE_MOCK) {
-      await delay(2000);
-      return {
-        function: functionFullName,
-        total: 10,
-        passed: 8,
-        failed: 2,
-        updated: 0,
-        failures: [],
-      };
-    }
-    return fetchAPI('/replay/run', {
-      method: 'POST',
-      body: JSON.stringify({
-        function_full_name: functionFullName,
-        limit,
-        update_baseline: updateBaseline,
-      }),
-    });
-  },
-
-  async runSemanticReplay(
-    functionFullName: string,
-    options?: {
-      limit?: number;
-      updateBaseline?: boolean;
-      similarityThreshold?: number;
-      semanticEval?: boolean;
-    }
-  ): Promise<ReplayResult> {
-    if (USE_MOCK) {
-      await delay(3000);
-      return {
-        function: functionFullName,
-        mode: options?.semanticEval ? 'llm' : 'vector',
-        total: 10,
-        passed: 9,
-        failed: 1,
-        updated: 0,
-        failures: [],
-      };
-    }
-    return fetchAPI('/replay/run/semantic', {
-      method: 'POST',
-      body: JSON.stringify({
-        function_full_name: functionFullName,
-        limit: options?.limit ?? 10,
-        update_baseline: options?.updateBaseline ?? false,
-        similarity_threshold: options?.similarityThreshold,
-        semantic_eval: options?.semanticEval ?? false,
-      }),
-    });
   },
 };
 
