@@ -149,27 +149,24 @@ function TimelineWidget({ timeRange }: { timeRange: number }) {
     );
 }
 
-// [FIX 1] 'any' 에러 수정을 위한 인터페이스 정의
+// Distribution Widget
 interface FunctionDistributionItem {
     function_name?: string;
     name?: string;
     count: number;
     percentage: number;
-    [key: string]: unknown; // 추가 속성 허용
+    [key: string]: unknown;
 }
 
-// Distribution Widget
 function DistributionWidget({ limit = 6 }: { limit?: number }) {
     const { data: distribution } = useFunctionDistribution(limit);
 
-    // Fix: any 타입 제거 및 명시적 타입 변환 사용
     const processedData = useMemo(() => {
         if (!distribution) return [];
         return distribution.map((item) => {
             const typedItem = item as FunctionDistributionItem;
             return {
                 ...typedItem,
-                // function_name이 있으면 사용, 없으면 name 사용, 둘 다 없으면 'Unknown'
                 name: typedItem.function_name || typedItem.name || 'Unknown',
             };
         });
@@ -234,8 +231,6 @@ function ErrorDistributionWidget({ timeRange }: { timeRange: number }) {
     return (
         <div className="space-y-2">
             {distribution.slice(0, 5).map((item, index) => {
-                // [FIX 2] error_code 접근을 위한 타입 단언 (Type Assertion)
-                // API 응답 타입(DistributionItem)에 error_code가 없을 수 있으므로 확장된 타입으로 취급
                 const errorItem = item as { name?: string; error_code?: string; count: number };
                 const displayName = errorItem.name || errorItem.error_code || 'Unknown';
 
@@ -288,8 +283,8 @@ function SlowestWidget({ limit = 5 }: { limit?: number }) {
                         <code className="text-sm truncate">{exec.function_name}</code>
                     </div>
                     <span className="text-sm font-medium text-orange-500 shrink-0">
-            {formatDuration(exec.duration_ms)}
-          </span>
+                        {formatDuration(exec.duration_ms)}
+                    </span>
                 </div>
             ))}
         </div>
@@ -298,9 +293,8 @@ function SlowestWidget({ limit = 5 }: { limit?: number }) {
 
 // ============ Main Page Component ============
 export default function DashboardPage() {
-    // Global state from Zustand
-    const { timeRange, getTimeRangeMinutes, fillMode } = useDashboardStore();
-    const currentTimeRange = getTimeRangeMinutes();
+    // Global state from Zustand - timeRangeMinutes는 이제 반응성 있는 상태값
+    const { timeRangeMinutes, fillMode } = useDashboardStore();
 
     // Local state
     const [currentLayout, setCurrentLayout] = useState('overview');
@@ -313,13 +307,13 @@ export default function DashboardPage() {
         queryClient.invalidateQueries();
     };
 
-    // Define widgets
+    // Define widgets - timeRangeMinutes를 직접 사용
     const widgets = useMemo(() => [
         {
             id: 'kpi-executions',
             title: 'Total Executions',
             icon: <Activity className="h-4 w-4" />,
-            component: <KPIExecutionsWidget timeRange={currentTimeRange} />,
+            component: <KPIExecutionsWidget timeRange={timeRangeMinutes} />,
             minW: 2,
             minH: 2,
         },
@@ -327,7 +321,7 @@ export default function DashboardPage() {
             id: 'kpi-success',
             title: 'Success Rate',
             icon: <Zap className="h-4 w-4" />,
-            component: <KPISuccessWidget timeRange={currentTimeRange} />,
+            component: <KPISuccessWidget timeRange={timeRangeMinutes} />,
             minW: 2,
             minH: 2,
         },
@@ -335,7 +329,7 @@ export default function DashboardPage() {
             id: 'kpi-duration',
             title: 'Avg Duration',
             icon: <Clock className="h-4 w-4" />,
-            component: <KPIDurationWidget timeRange={currentTimeRange} />,
+            component: <KPIDurationWidget timeRange={timeRangeMinutes} />,
             minW: 2,
             minH: 2,
         },
@@ -343,7 +337,7 @@ export default function DashboardPage() {
             id: 'kpi-errors',
             title: 'Errors',
             icon: <AlertTriangle className="h-4 w-4" />,
-            component: <KPIErrorsWidget timeRange={currentTimeRange} />,
+            component: <KPIErrorsWidget timeRange={timeRangeMinutes} />,
             minW: 2,
             minH: 2,
         },
@@ -351,7 +345,7 @@ export default function DashboardPage() {
             id: 'timeline',
             title: 'Execution Timeline',
             icon: <TrendingUp className="h-4 w-4" />,
-            component: <TimelineWidget timeRange={currentTimeRange} />,
+            component: <TimelineWidget timeRange={timeRangeMinutes} />,
             minW: 4,
             minH: 3,
         },
@@ -367,7 +361,7 @@ export default function DashboardPage() {
             id: 'recent-errors',
             title: 'Recent Errors',
             icon: <AlertTriangle className="h-4 w-4" />,
-            component: <RecentErrorsWidget timeRange={currentTimeRange} />,
+            component: <RecentErrorsWidget timeRange={timeRangeMinutes} />,
             minW: 4,
             minH: 3,
         },
@@ -383,7 +377,7 @@ export default function DashboardPage() {
             id: 'error-distribution',
             title: 'Error Distribution',
             icon: <PieChart className="h-4 w-4" />,
-            component: <ErrorDistributionWidget timeRange={currentTimeRange} />,
+            component: <ErrorDistributionWidget timeRange={timeRangeMinutes} />,
             minW: 3,
             minH: 3,
         },
@@ -395,7 +389,7 @@ export default function DashboardPage() {
             minW: 4,
             minH: 3,
         },
-    ], [currentTimeRange, fillMode]);
+    ], [timeRangeMinutes, fillMode]);
 
     // Get current preset layout
     const layout = presetLayouts[currentLayout as keyof typeof presetLayouts] || presetLayouts.overview;
