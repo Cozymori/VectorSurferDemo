@@ -79,18 +79,18 @@ export interface TraceListItem {
 }
 
 export interface Span {
-    span_id: string;
-    parent_span_id?: string;
-    function_name: string;
-    status: string;
-    duration_ms: number;
-    start_time: string;
-    end_time: string;
-    depth: number;
-    offset_ms: number;
-    children?: Span[];
-    error_code?: string;
-    error_message?: string;
+  span_id: string;
+  parent_span_id?: string;
+  function_name: string;
+  status: string;
+  duration_ms: number;
+  start_time: string;
+  end_time: string;
+  depth: number;
+  offset_ms: number;
+  children?: Span[];
+  error_code?: string;
+  error_message?: string;
 }
 
 export interface TraceDetail {
@@ -150,31 +150,6 @@ export interface ErrorTrend {
   timestamp: string;
   count: number;
   error_codes: Record<string, number>;
-}
-
-// ============ Replay ============
-export interface ReplayResult {
-  function: string;
-  total: number;
-  passed: number;
-  failed: number;
-  updated: number;
-  mode?: string;
-  failures: ReplayFailure[];
-}
-
-export interface ReplayFailure {
-  input: string;
-  expected: string;
-  actual: string;
-  diff_html?: string;
-  similarity?: number;
-}
-
-export interface ReplayableFunction {
-  function_name: string;
-  log_count: number;
-  latest_timestamp: string;
 }
 
 // ============ Healer ============
