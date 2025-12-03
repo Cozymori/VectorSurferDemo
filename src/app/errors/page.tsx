@@ -15,12 +15,8 @@ import {
     Loader2,
 } from 'lucide-react';
 
-// 스토어 import 추가
 import { useDashboardStore } from '@/lib/stores/useDashboardStore';
-
-// TimeRangeSelector 및 FillModeSelector import (경로는 실제 파일 위치에 맞게 확인 필요)
 import { TimeRangeSelector, FillModeSelector } from '@/components/ui/TimeRangeSelector';
-
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SurferChart, type FillMode } from '@/components/dashboard/SurferChart';
 import { useErrors, useErrorSummary, useErrorTrends, useErrorSearch, useErrorDistribution } from '@/lib/hooks/useApi';
@@ -148,7 +144,7 @@ function SummaryCards({ timeRange }: SummaryCardsProps) {
             </div>
 
             {/* Top Error Codes */}
-            {topErrors.map((item, index) => (
+            {topErrors.map((item) => (
                 <div key={item.error_code} className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-sm text-muted-foreground mb-1">{item.error_code}</p>
                     <p className="text-3xl font-bold">{formatNumber(item.count)}</p>
@@ -188,12 +184,12 @@ function ErrorCard({ error }: ErrorCardProps) {
                     <div className="flex items-center gap-2 mb-2">
                         <code className="text-sm font-semibold">{error.function_name}</code>
                         <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400">
-              {error.error_code}
-            </span>
+                            {error.error_code}
+                        </span>
                         {error.team && (
                             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {error.team}
-              </span>
+                                {error.team}
+                            </span>
                         )}
                     </div>
 
@@ -223,25 +219,21 @@ function ErrorCard({ error }: ErrorCardProps) {
 
 // ============ Main Page Component ============
 export default function ErrorsPage() {
-    // 1. Zustand Store에서 상태 가져오기 (useState 대체)
-    const { timeRange, fillMode } = useDashboardStore();
+    // 전역 스토어에서 timeRangeMinutes, fillMode 직접 사용
+    const { timeRangeMinutes, fillMode } = useDashboardStore();
 
     // 로컬 상태 (검색 및 필터는 페이지별로 다를 수 있으므로 유지)
     const [searchQuery, setSearchQuery] = useState('');
     const [functionFilter, setFunctionFilter] = useState('');
     const [errorCodeFilter, setErrorCodeFilter] = useState('');
 
-    // 2. API에 전달할 시간 값 계산 (store의 구조에 따라 preset 값 사용)
-    // custom 모드일 경우 처리가 필요할 수 있으나, 일단 preset(분 단위 숫자)을 사용한다고 가정
-    const activeTimeRange = timeRange.preset ?? 1440;
-
     const { data: errors, isLoading: loadingErrors } = useErrors(50, {
-        time_range: activeTimeRange,
+        time_range: timeRangeMinutes,
         function_name: functionFilter || undefined,
         error_code: errorCodeFilter || undefined,
     });
     const { data: searchResults, isLoading: searching } = useErrorSearch(searchQuery, 20);
-    const { data: distribution } = useErrorDistribution(activeTimeRange);
+    const { data: distribution } = useErrorDistribution(timeRangeMinutes);
 
     const displayErrors = searchQuery ? searchResults?.items : errors?.items;
     const isLoading = searchQuery ? searching : loadingErrors;
@@ -259,12 +251,11 @@ export default function ErrorsPage() {
                         Analyze error patterns and search by message
                     </p>
                 </div>
-                {/* 3. Props 전달 없이 사용 (Store 연동됨) */}
                 <TimeRangeSelector />
             </div>
 
             {/* Summary Cards */}
-            <SummaryCards timeRange={activeTimeRange} />
+            <SummaryCards timeRange={timeRangeMinutes} />
 
             {/* Charts Row */}
             <div className="grid gap-6 lg:grid-cols-3">
@@ -275,12 +266,9 @@ export default function ErrorsPage() {
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                             <h3 className="font-semibold">Error Trend</h3>
                         </div>
-
-                        {/* 4. FillModeSelector 컴포넌트 사용 */}
                         <FillModeSelector />
                     </div>
-                    {/* Store에서 가져온 fillMode 전달 */}
-                    <ErrorTrendChart timeRange={activeTimeRange} fillMode={fillMode} />
+                    <ErrorTrendChart timeRange={timeRangeMinutes} fillMode={fillMode} />
                 </div>
 
                 {/* Distribution */}
@@ -345,8 +333,8 @@ export default function ErrorsPage() {
 
                 {/* Results count */}
                 <span className="text-sm text-muted-foreground ml-auto">
-          {displayErrors?.length || 0} errors
-        </span>
+                    {displayErrors?.length || 0} errors
+                </span>
             </div>
 
             {/* Error List */}
