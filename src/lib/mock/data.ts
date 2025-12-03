@@ -15,7 +15,6 @@ import type {
   ErrorLog,
   ErrorSummary,
   ErrorTrend,
-  ReplayableFunction,
   HealableFunction,
 } from '../types/api';
 
@@ -318,25 +317,6 @@ export const mockErrorTrends: ErrorTrend[] = Array.from({ length: 24 }, (_, i) =
     },
   };
 });
-
-// ============ Replay ============
-export const mockReplayableFunctions: ReplayableFunction[] = [
-  {
-    function_name: 'process_payment',
-    log_count: 156,
-    latest_timestamp: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    function_name: 'validate_user',
-    log_count: 89,
-    latest_timestamp: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    function_name: 'calculate_shipping',
-    log_count: 45,
-    latest_timestamp: new Date(Date.now() - 10800000).toISOString(),
-  },
-];
 
 // ============ Healer ============
 export const mockHealableFunctions: HealableFunction[] = [
