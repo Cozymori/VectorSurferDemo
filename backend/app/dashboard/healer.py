@@ -6,9 +6,11 @@ Based on: test_ex/healing.py
 """
 
 import logging
-from typing import Dict, Any, Optional
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Any, Optional, List
 
 from vectorwave.utils.healer import VectorWaveHealer
+from vectorwave.search.execution_search import find_executions
 from vectorwave.models.db_config import get_weaviate_settings
 
 logger = logging.getLogger(__name__)
@@ -120,9 +122,6 @@ class HealerService:
             }
         """
         try:
-            from datetime import datetime, timezone, timedelta
-            from ..search.execution_search import find_executions
-            
             time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).isoformat()
             
             errors = find_executions(
@@ -181,7 +180,7 @@ class HealerService:
 
     def batch_diagnose(
         self,
-        function_names: list,
+        function_names: List[str],
         lookback_minutes: int = 60
     ) -> Dict[str, Any]:
         """
