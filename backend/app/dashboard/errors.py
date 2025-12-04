@@ -3,15 +3,23 @@ Error Service
 
 Provides error analysis and semantic error search.
 Based on: test_ex/advanced_search.py (Scenario 5), test_ex/check_all_errors.py
+
+[수정사항]
+- get_error_summary: limit=10000 메모리 집계 → Weaviate Aggregate API 사용
+- get_error_trends: 버킷별 Aggregate 사용
 """
 
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 
+from vectorwave.database.db import get_cached_client
 from vectorwave.database.db_search import search_executions, search_errors_by_message
 from vectorwave.search.execution_search import find_executions, find_recent_errors
 from vectorwave.models.db_config import get_weaviate_settings
+
+import weaviate.classes.query as wvc_query
+from weaviate.classes.aggregate import GroupByAggregate
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +31,11 @@ class ErrorService:
 
     def __init__(self):
         self.settings = get_weaviate_settings()
+
+    def _get_execution_collection(self):
+        """Returns the execution collection for aggregate queries."""
+        client = get_cached_client()
+        return client.collections.get(self.settings.EXECUTION_COLLECTION_NAME)
 
     def get_errors(
         self,
@@ -168,6 +181,7 @@ class ErrorService:
     def get_error_summary(self, time_range_minutes: int = 1440) -> Dict[str, Any]:
         """
         Returns a summary of errors for the specified time range.
+        [수정] Weaviate Aggregate API 사용하여 DB 레벨에서 집계
         
         Args:
             time_range_minutes: Time range in minutes (default: 24 hours)
@@ -182,46 +196,73 @@ class ErrorService:
             }
         """
         try:
-            time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).isoformat()
+            collection = self._get_execution_collection()
+            time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes))
             
-            errors = find_executions(
-                filters={
-                    "status": "ERROR",
-                    "timestamp_utc__gte": time_limit
-                },
-                limit=10000,
-                sort_by="timestamp_utc",
-                sort_ascending=False
+            # 기본 필터: ERROR 상태 + 시간 범위
+            base_filter = (
+                wvc_query.Filter.by_property("status").equal("ERROR") &
+                wvc_query.Filter.by_property("timestamp_utc").greater_or_equal(time_limit)
             )
             
-            # Aggregate by error_code
-            code_counts: Dict[str, int] = {}
-            func_counts: Dict[str, int] = {}
-            team_counts: Dict[str, int] = {}
+            # 1. 전체 에러 카운트
+            total_result = collection.aggregate.over_all(
+                filters=base_filter,
+                total_count=True
+            )
+            total_errors = total_result.total_count or 0
             
-            for error in errors:
-                code = error.get('error_code', 'UNKNOWN')
-                func = error.get('function_name', 'unknown')
-                team = error.get('team', 'unassigned')
-                
-                code_counts[code] = code_counts.get(code, 0) + 1
-                func_counts[func] = func_counts.get(func, 0) + 1
-                team_counts[team] = team_counts.get(team, 0) + 1
+            # 2. error_code별 집계
+            code_result = collection.aggregate.over_all(
+                filters=base_filter,
+                group_by=GroupByAggregate(prop="error_code"),
+                total_count=True
+            )
+            
+            by_error_code = []
+            for group in code_result.groups:
+                by_error_code.append({
+                    "error_code": group.grouped_by.value or "UNKNOWN",
+                    "count": group.total_count or 0
+                })
+            by_error_code.sort(key=lambda x: x["count"], reverse=True)
+            
+            # 3. function_name별 집계
+            func_result = collection.aggregate.over_all(
+                filters=base_filter,
+                group_by=GroupByAggregate(prop="function_name"),
+                total_count=True
+            )
+            
+            by_function = []
+            for group in func_result.groups:
+                by_function.append({
+                    "function_name": group.grouped_by.value or "unknown",
+                    "count": group.total_count or 0
+                })
+            by_function.sort(key=lambda x: x["count"], reverse=True)
+            by_function = by_function[:10]  # Top 10
+            
+            # 4. team별 집계
+            team_result = collection.aggregate.over_all(
+                filters=base_filter,
+                group_by=GroupByAggregate(prop="team"),
+                total_count=True
+            )
+            
+            by_team = []
+            for group in team_result.groups:
+                by_team.append({
+                    "team": group.grouped_by.value or "unassigned",
+                    "count": group.total_count or 0
+                })
+            by_team.sort(key=lambda x: x["count"], reverse=True)
             
             return {
-                "total_errors": len(errors),
-                "by_error_code": [
-                    {"error_code": k, "count": v}
-                    for k, v in sorted(code_counts.items(), key=lambda x: x[1], reverse=True)
-                ],
-                "by_function": [
-                    {"function_name": k, "count": v}
-                    for k, v in sorted(func_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-                ],
-                "by_team": [
-                    {"team": k, "count": v}
-                    for k, v in sorted(team_counts.items(), key=lambda x: x[1], reverse=True)
-                ],
+                "total_errors": total_errors,
+                "by_error_code": by_error_code,
+                "by_function": by_function,
+                "by_team": by_team,
                 "time_range_minutes": time_range_minutes
             }
             
@@ -243,6 +284,7 @@ class ErrorService:
     ) -> List[Dict[str, Any]]:
         """
         Returns error counts over time for trend visualization.
+        [수정] 버킷별 Weaviate Aggregate 사용
         
         Args:
             time_range_minutes: Total time range
@@ -255,18 +297,9 @@ class ErrorService:
             ]
         """
         try:
+            collection = self._get_execution_collection()
             now = datetime.now(timezone.utc)
             time_limit = now - timedelta(minutes=time_range_minutes)
-            
-            errors = find_executions(
-                filters={
-                    "status": "ERROR",
-                    "timestamp_utc__gte": time_limit.isoformat()
-                },
-                limit=10000,
-                sort_by="timestamp_utc",
-                sort_ascending=True
-            )
             
             # Create time buckets
             num_buckets = time_range_minutes // bucket_size_minutes
@@ -276,34 +309,42 @@ class ErrorService:
                 bucket_start = time_limit + timedelta(minutes=i * bucket_size_minutes)
                 bucket_end = bucket_start + timedelta(minutes=bucket_size_minutes)
                 
-                bucket_errors = []
-                for error in errors:
-                    timestamp_str = error.get('timestamp_utc', '')
-                    if not timestamp_str:
-                        continue
-                    
-                    if isinstance(timestamp_str, str):
-                        try:
-                            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        except ValueError:
-                            continue
-                    else:
-                        timestamp = timestamp_str
-                    
-                    if bucket_start <= timestamp < bucket_end:
-                        bucket_errors.append(error)
+                # 버킷 필터: ERROR + 시간 범위
+                bucket_filter = (
+                    wvc_query.Filter.by_property("status").equal("ERROR") &
+                    wvc_query.Filter.by_property("timestamp_utc").greater_or_equal(bucket_start) &
+                    wvc_query.Filter.by_property("timestamp_utc").less_than(bucket_end)
+                )
                 
-                # Count by error_code within bucket
-                code_counts = {}
-                for error in bucket_errors:
-                    code = error.get('error_code', 'UNKNOWN')
-                    code_counts[code] = code_counts.get(code, 0) + 1
-                
-                buckets.append({
-                    "timestamp": bucket_start.isoformat(),
-                    "count": len(bucket_errors),
-                    "error_codes": code_counts
-                })
+                try:
+                    # error_code별 집계
+                    result = collection.aggregate.over_all(
+                        filters=bucket_filter,
+                        group_by=GroupByAggregate(prop="error_code"),
+                        total_count=True
+                    )
+                    
+                    code_counts = {}
+                    total_count = 0
+                    for group in result.groups:
+                        code = group.grouped_by.value or "UNKNOWN"
+                        count = group.total_count or 0
+                        code_counts[code] = count
+                        total_count += count
+                    
+                    buckets.append({
+                        "timestamp": bucket_start.isoformat(),
+                        "count": total_count,
+                        "error_codes": code_counts
+                    })
+                    
+                except Exception as bucket_error:
+                    logger.warning(f"Failed to aggregate error bucket {i}: {bucket_error}")
+                    buckets.append({
+                        "timestamp": bucket_start.isoformat(),
+                        "count": 0,
+                        "error_codes": {}
+                    })
             
             return buckets
             
