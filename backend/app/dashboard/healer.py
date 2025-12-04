@@ -297,32 +297,13 @@ class HealerService:
     ) -> Dict[str, Any]:
         """
         Diagnoses multiple functions in batch with async parallel processing.
-        
-        [High Priority Fix] 동기식 순차 처리 → 비동기 병렬 처리
-        - asyncio.gather로 병렬 실행
-        - Semaphore로 동시 실행 수 제한 (기본 3개)
-        - 개별 타임아웃 적용 (기본 60초)
-
-        Args:
-            function_names: List of function names to diagnose
-            lookback_minutes: Time range to look for errors
-            max_concurrent: Maximum concurrent diagnoses (default: 3)
-            timeout_seconds: Timeout per diagnosis in seconds (default: 60)
-
-        Returns:
-            {
-                "results": [...],
-                "total": int,
-                "succeeded": int,
-                "failed": int
-            }
         """
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        
+
         semaphore = asyncio.Semaphore(max_concurrent)
         executor = ThreadPoolExecutor(max_workers=max_concurrent)
-        
+
         async def diagnose_with_limit(func_name: str) -> Dict[str, Any]:
             """단일 함수 진단 (세마포어 + 타임아웃 적용)"""
             async with semaphore:
@@ -339,15 +320,17 @@ class HealerService:
                         ),
                         timeout=timeout_seconds
                     )
-                    
+
                     return {
                         "function_name": func_name,
                         "status": diagnosis_result["status"],
                         "diagnosis": diagnosis_result.get("diagnosis", ""),
+                        # [Fix] suggested_fix 필드 추가
+                        "suggested_fix": diagnosis_result.get("suggested_fix"),
                         "diagnosis_preview": (diagnosis_result.get("diagnosis", "")[:200] + "...")
                         if diagnosis_result.get("diagnosis") else ""
                     }
-                    
+
                 except asyncio.TimeoutError:
                     logger.warning(f"Diagnosis timeout for {func_name} after {timeout_seconds}s")
                     return {
@@ -364,22 +347,22 @@ class HealerService:
                         "diagnosis": str(e),
                         "diagnosis_preview": str(e)[:200]
                     }
-        
+
         try:
             # 모든 진단을 병렬로 실행
             tasks = [diagnose_with_limit(fn) for fn in function_names]
             results = await asyncio.gather(*tasks, return_exceptions=False)
-            
+
             # 결과 집계
             succeeded = sum(1 for r in results if r["status"] in ["success", "no_errors"])
             failed = len(results) - succeeded
-            
+
             return {
                 "results": results,
                 "total": len(function_names),
                 "succeeded": succeeded,
                 "failed": failed
             }
-            
+
         finally:
             executor.shutdown(wait=False)
