@@ -3,6 +3,9 @@ Healer Service
 
 Provides AI-powered bug diagnosis and fix suggestions.
 Based on: test_ex/healing.py
+
+[수정사항]
+- get_healable_functions: limit=10000 메모리 집계 → Weaviate Aggregate API 사용
 """
 
 import logging
@@ -10,8 +13,13 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 
 from vectorwave.utils.healer import VectorWaveHealer
+from vectorwave.database.db import get_cached_client
+from vectorwave.database.db_search import search_executions
 from vectorwave.search.execution_search import find_executions
 from vectorwave.models.db_config import get_weaviate_settings
+
+import weaviate.classes.query as wvc_query
+from weaviate.classes.aggregate import GroupByAggregate
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +39,11 @@ class HealerService:
         if self._healer is None:
             self._healer = VectorWaveHealer(model=self.model)
         return self._healer
+
+    def _get_execution_collection(self):
+        """Returns the execution collection for aggregate queries."""
+        client = get_cached_client()
+        return client.collections.get(self.settings.EXECUTION_COLLECTION_NAME)
 
     def diagnose_and_heal(
             self,
@@ -102,6 +115,7 @@ class HealerService:
     ) -> Dict[str, Any]:
         """
         Returns functions that have recent errors and are candidates for healing.
+        [수정] Weaviate Aggregate API 사용하여 DB 레벨에서 집계
         
         Args:
             time_range_minutes: Time range to look for errors (default: 24 hours).
@@ -123,49 +137,74 @@ class HealerService:
             }
         """
         try:
-            # 기본 필터: 에러 상태인 것만 조회
-            filters = {"status": "ERROR"}
-
+            collection = self._get_execution_collection()
+            
+            # 기본 필터: ERROR 상태
+            base_filter = wvc_query.Filter.by_property("status").equal("ERROR")
+            
             # time_range_minutes가 양수일 때만 시간 필터 적용
-            # 0 또는 음수이면 전체 기간(All Time)으로 간주
             if time_range_minutes > 0:
-                time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).isoformat()
-                filters["timestamp_utc__gte"] = time_limit
-
-            errors = find_executions(
-                filters=filters,
-                limit=10000,
-                sort_by="timestamp_utc",
-                sort_ascending=False
+                time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes))
+                base_filter = base_filter & wvc_query.Filter.by_property("timestamp_utc").greater_or_equal(time_limit)
+            
+            # 1. function_name별 에러 카운트 (Aggregate)
+            func_result = collection.aggregate.over_all(
+                filters=base_filter,
+                group_by=GroupByAggregate(prop="function_name"),
+                total_count=True
             )
-
-            # Group by function
-            func_map: Dict[str, Dict] = {}
-            for error in errors:
-                func_name = error.get('function_name')
-                if not func_name:
-                    continue
-
-                if func_name not in func_map:
-                    func_map[func_name] = {
-                        "function_name": func_name,
-                        "error_count": 0,
-                        "error_codes": set(),
-                        "latest_error_time": error.get('timestamp_utc')
-                    }
-
-                func_map[func_name]["error_count"] += 1
-                error_code = error.get('error_code')
-                if error_code:
-                    func_map[func_name]["error_codes"].add(error_code)
-
-            # Convert sets to lists
+            
+            # function별 에러 카운트 맵 생성
+            func_error_counts: Dict[str, int] = {}
+            for group in func_result.groups:
+                func_name = group.grouped_by.value
+                if func_name:
+                    func_error_counts[func_name] = group.total_count or 0
+            
+            # 2. 각 함수별 error_codes와 latest_error_time 조회
+            # (이 부분은 추가 쿼리 필요 - Aggregate만으로는 error_codes 목록을 얻기 어려움)
             items = []
-            for func_data in func_map.values():
-                func_data["error_codes"] = list(func_data["error_codes"])
-                items.append(func_data)
-
-            # Sort by error count
+            
+            for func_name, error_count in func_error_counts.items():
+                # 해당 함수의 최근 에러 로그 몇 개만 조회하여 error_codes 수집
+                func_filter = base_filter & wvc_query.Filter.by_property("function_name").equal(func_name)
+                
+                # error_code별 집계
+                code_result = collection.aggregate.over_all(
+                    filters=func_filter,
+                    group_by=GroupByAggregate(prop="error_code"),
+                    total_count=True
+                )
+                
+                error_codes = set()
+                for group in code_result.groups:
+                    code = group.grouped_by.value
+                    if code:
+                        error_codes.add(code)
+                
+                # 최신 에러 시간 조회 (1개만)
+                latest_errors = search_executions(
+                    limit=1,
+                    filters={
+                        "function_name": func_name,
+                        "status": "ERROR"
+                    },
+                    sort_by="timestamp_utc",
+                    sort_ascending=False
+                )
+                
+                latest_time = None
+                if latest_errors:
+                    latest_time = latest_errors[0].get('timestamp_utc')
+                
+                items.append({
+                    "function_name": func_name,
+                    "error_count": error_count,
+                    "error_codes": list(error_codes),
+                    "latest_error_time": latest_time
+                })
+            
+            # error_count 기준 내림차순 정렬
             items.sort(key=lambda x: x["error_count"], reverse=True)
 
             return {
@@ -189,7 +228,7 @@ class HealerService:
             lookback_minutes: int = 60
     ) -> Dict[str, Any]:
         """
-        Diagnoses multiple functions in batch.
+        Diagnoses multiple functions in batch (synchronous version).
 
         Args:
             function_names: List of function names to diagnose
@@ -248,3 +287,99 @@ class HealerService:
             "succeeded": succeeded,
             "failed": failed
         }
+
+    async def batch_diagnose_async(
+            self,
+            function_names: List[str],
+            lookback_minutes: int = 60,
+            max_concurrent: int = 3,
+            timeout_seconds: int = 60
+    ) -> Dict[str, Any]:
+        """
+        Diagnoses multiple functions in batch with async parallel processing.
+        
+        [High Priority Fix] 동기식 순차 처리 → 비동기 병렬 처리
+        - asyncio.gather로 병렬 실행
+        - Semaphore로 동시 실행 수 제한 (기본 3개)
+        - 개별 타임아웃 적용 (기본 60초)
+
+        Args:
+            function_names: List of function names to diagnose
+            lookback_minutes: Time range to look for errors
+            max_concurrent: Maximum concurrent diagnoses (default: 3)
+            timeout_seconds: Timeout per diagnosis in seconds (default: 60)
+
+        Returns:
+            {
+                "results": [...],
+                "total": int,
+                "succeeded": int,
+                "failed": int
+            }
+        """
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        semaphore = asyncio.Semaphore(max_concurrent)
+        executor = ThreadPoolExecutor(max_workers=max_concurrent)
+        
+        async def diagnose_with_limit(func_name: str) -> Dict[str, Any]:
+            """단일 함수 진단 (세마포어 + 타임아웃 적용)"""
+            async with semaphore:
+                try:
+                    loop = asyncio.get_event_loop()
+                    # 동기 함수를 executor에서 실행
+                    diagnosis_result = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            executor,
+                            lambda: self.diagnose_and_heal(
+                                function_name=func_name,
+                                lookback_minutes=lookback_minutes
+                            )
+                        ),
+                        timeout=timeout_seconds
+                    )
+                    
+                    return {
+                        "function_name": func_name,
+                        "status": diagnosis_result["status"],
+                        "diagnosis": diagnosis_result.get("diagnosis", ""),
+                        "diagnosis_preview": (diagnosis_result.get("diagnosis", "")[:200] + "...")
+                        if diagnosis_result.get("diagnosis") else ""
+                    }
+                    
+                except asyncio.TimeoutError:
+                    logger.warning(f"Diagnosis timeout for {func_name} after {timeout_seconds}s")
+                    return {
+                        "function_name": func_name,
+                        "status": "error",
+                        "diagnosis": f"Diagnosis timed out after {timeout_seconds} seconds",
+                        "diagnosis_preview": f"Timeout after {timeout_seconds}s"
+                    }
+                except Exception as e:
+                    logger.error(f"Batch diagnosis failed for {func_name}: {e}")
+                    return {
+                        "function_name": func_name,
+                        "status": "error",
+                        "diagnosis": str(e),
+                        "diagnosis_preview": str(e)[:200]
+                    }
+        
+        try:
+            # 모든 진단을 병렬로 실행
+            tasks = [diagnose_with_limit(fn) for fn in function_names]
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+            
+            # 결과 집계
+            succeeded = sum(1 for r in results if r["status"] in ["success", "no_errors"])
+            failed = len(results) - succeeded
+            
+            return {
+                "results": results,
+                "total": len(function_names),
+                "succeeded": succeeded,
+                "failed": failed
+            }
+            
+        finally:
+            executor.shutdown(wait=False)

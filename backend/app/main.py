@@ -3,6 +3,9 @@ VectorSurfer 0.0.1 Backend - FastAPI Application
 
 This backend serves the VectorWave monitoring dashboard.
 All endpoints return JSON-serializable data from the Dashboard Service Layer.
+
+[수정사항]
+- OPENAI_API_KEY 검증 로직 추가 (Healer 기능 필수)
 """
 
 from fastapi import FastAPI
@@ -20,6 +23,14 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Initialize VectorWave connection
     print("🚀 Starting VectorSurfer 0.0.1 Backend...")
+    
+    # [추가] Check for OPENAI_API_KEY (required for Healer feature)
+    if not settings.OPENAI_API_KEY:
+        print("⚠️  WARNING: OPENAI_API_KEY is not set!")
+        print("   └─ Healer (AI diagnosis) feature will not work without it.")
+        print("   └─ Set OPENAI_API_KEY in your .env file or environment variables.")
+    else:
+        print("✅ OPENAI_API_KEY is configured")
     
     try:
         from vectorwave import initialize_database
@@ -82,8 +93,12 @@ async def health():
     
     db_status = get_db_status()
     
+    # [추가] Healer 기능 사용 가능 여부 체크
+    healer_available = bool(settings.OPENAI_API_KEY)
+    
     return {
         "status": "healthy" if db_status else "degraded",
         "db_connected": db_status,
+        "healer_available": healer_available,
         "version": "2.0.0"
     }

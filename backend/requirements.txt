@@ -20,3 +20,6 @@ openai>=1.0.0
 
 # Optional: For HuggingFace vectorizer
 sentence-transformers>=2.2.0
+
+# [추가] For async batch processing in sync context
+nest-asyncio>=1.5.0
