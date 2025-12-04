@@ -23,7 +23,7 @@ if os.path.exists(src_path):
 
 # Load ..env from parent (VectorWave config)
 from dotenv import load_dotenv
-env_path = os.path.join(project_root, 'test_ex', '..env')
+env_path = os.path.join(project_root, 'test_ex', '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
     print(f"✅ Loaded ..env from: {env_path}")
