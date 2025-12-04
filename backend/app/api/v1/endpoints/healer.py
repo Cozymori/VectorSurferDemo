@@ -2,6 +2,9 @@
 Healer Endpoints
 
 Provides AI-powered bug diagnosis and fix suggestions.
+
+[수정사항]
+1. batch_diagnose 엔드포인트를 async로 변경하여 병렬 처리 활용
 """
 
 from fastapi import APIRouter, Query
@@ -76,7 +79,12 @@ async def diagnose_and_heal(request: DiagnoseRequest):
 @router.post("/diagnose/batch")
 async def batch_diagnose(request: BatchDiagnoseRequest):
     """
-    Diagnoses multiple functions in batch.
+    Diagnoses multiple functions in batch using parallel processing.
+    
+    [수정사항]
+    - 비동기 병렬 처리로 성능 개선
+    - 동시 실행 수 제한으로 rate limit 방지
+    - 개별 진단에 타임아웃 적용
     
     Request Body:
         - function_names: List of function names
@@ -87,9 +95,12 @@ async def batch_diagnose(request: BatchDiagnoseRequest):
         - total: int
         - succeeded: int
         - failed: int
+        - execution_mode: str ('parallel_async')
+        - max_concurrent: int
     """
     service = get_service()
-    return service.batch_diagnose(
+    # [수정] 직접 async 메서드 호출
+    return await service.batch_diagnose_async(
         function_names=request.function_names,
         lookback_minutes=request.lookback_minutes
     )
