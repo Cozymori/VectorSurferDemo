@@ -33,9 +33,9 @@ class HealerService:
         return self._healer
 
     def diagnose_and_heal(
-        self,
-        function_name: str,
-        lookback_minutes: int = 60
+            self,
+            function_name: str,
+            lookback_minutes: int = 60
     ) -> Dict[str, Any]:
         """
         Diagnoses errors for a function and suggests fixes.
@@ -56,12 +56,12 @@ class HealerService:
         """
         try:
             healer = self._get_healer()
-            
+
             result = healer.diagnose_and_heal(
                 function_name=function_name,
                 lookback_minutes=lookback_minutes
             )
-            
+
             # Parse result to determine status
             if "No errors found" in result or "✅" in result:
                 status = "no_errors"
@@ -76,7 +76,7 @@ class HealerService:
                 # Extract code block if present
                 diagnosis = "Analysis complete. See suggested fix."
                 suggested_fix = result
-            
+
             return {
                 "function_name": function_name,
                 "diagnosis": diagnosis,
@@ -84,7 +84,7 @@ class HealerService:
                 "lookback_minutes": lookback_minutes,
                 "status": status
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to diagnose {function_name}: {e}")
             return {
@@ -97,15 +97,16 @@ class HealerService:
             }
 
     def get_healable_functions(
-        self,
-        time_range_minutes: int = 1440
+            self,
+            time_range_minutes: int = 1440
     ) -> Dict[str, Any]:
         """
         Returns functions that have recent errors and are candidates for healing.
         
         Args:
-            time_range_minutes: Time range to look for errors (default: 24 hours)
-            
+            time_range_minutes: Time range to look for errors (default: 24 hours).
+                              If <= 0, fetches all errors without time limit.
+
         Returns:
             {
                 "items": [
@@ -122,25 +123,29 @@ class HealerService:
             }
         """
         try:
-            time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).isoformat()
-            
+            # 기본 필터: 에러 상태인 것만 조회
+            filters = {"status": "ERROR"}
+
+            # time_range_minutes가 양수일 때만 시간 필터 적용
+            # 0 또는 음수이면 전체 기간(All Time)으로 간주
+            if time_range_minutes > 0:
+                time_limit = (datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).isoformat()
+                filters["timestamp_utc__gte"] = time_limit
+
             errors = find_executions(
-                filters={
-                    "status": "ERROR",
-                    "timestamp_utc__gte": time_limit
-                },
+                filters=filters,
                 limit=10000,
                 sort_by="timestamp_utc",
                 sort_ascending=False
             )
-            
+
             # Group by function
             func_map: Dict[str, Dict] = {}
             for error in errors:
                 func_name = error.get('function_name')
                 if not func_name:
                     continue
-                
+
                 if func_name not in func_map:
                     func_map[func_name] = {
                         "function_name": func_name,
@@ -148,27 +153,27 @@ class HealerService:
                         "error_codes": set(),
                         "latest_error_time": error.get('timestamp_utc')
                     }
-                
+
                 func_map[func_name]["error_count"] += 1
                 error_code = error.get('error_code')
                 if error_code:
                     func_map[func_name]["error_codes"].add(error_code)
-            
+
             # Convert sets to lists
             items = []
             for func_data in func_map.values():
                 func_data["error_codes"] = list(func_data["error_codes"])
                 items.append(func_data)
-            
+
             # Sort by error count
             items.sort(key=lambda x: x["error_count"], reverse=True)
-            
+
             return {
                 "items": items,
                 "total": len(items),
                 "time_range_minutes": time_range_minutes
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get healable functions: {e}")
             return {
@@ -179,17 +184,17 @@ class HealerService:
             }
 
     def batch_diagnose(
-        self,
-        function_names: List[str],
-        lookback_minutes: int = 60
+            self,
+            function_names: List[str],
+            lookback_minutes: int = 60
     ) -> Dict[str, Any]:
         """
         Diagnoses multiple functions in batch.
-        
+
         Args:
             function_names: List of function names to diagnose
             lookback_minutes: Time range to look for errors
-            
+
         Returns:
             {
                 "results": [
@@ -208,26 +213,26 @@ class HealerService:
         results = []
         succeeded = 0
         failed = 0
-        
+
         for func_name in function_names:
             try:
                 diagnosis_result = self.diagnose_and_heal(
                     function_name=func_name,
                     lookback_minutes=lookback_minutes
                 )
-                
+
                 results.append({
                     "function_name": func_name,
                     "status": diagnosis_result["status"],
                     "diagnosis_preview": (diagnosis_result.get("diagnosis", "")[:200] + "...")
-                        if diagnosis_result.get("diagnosis") else ""
+                    if diagnosis_result.get("diagnosis") else ""
                 })
-                
+
                 if diagnosis_result["status"] in ["success", "no_errors"]:
                     succeeded += 1
                 else:
                     failed += 1
-                    
+
             except Exception as e:
                 logger.error(f"Batch diagnosis failed for {func_name}: {e}")
                 results.append({
@@ -236,7 +241,7 @@ class HealerService:
                     "diagnosis_preview": str(e)
                 })
                 failed += 1
-        
+
         return {
             "results": results,
             "total": len(function_names),
