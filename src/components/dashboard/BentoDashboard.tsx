@@ -9,11 +9,11 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import GridLayout, { Layout } from 'react-grid-layout';
-import { 
-  Activity, 
-  Zap, 
-  AlertTriangle, 
-  Clock, 
+import {
+  Activity,
+  Zap,
+  AlertTriangle,
+  Clock,
   PieChart,
   Coins,
   TrendingUp,
@@ -21,9 +21,11 @@ import {
   Sparkles,
   GripVertical,
   Maximize2,
-  X,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 // Import CSS for react-grid-layout
 import 'react-grid-layout/css/styles.css';
@@ -56,41 +58,56 @@ interface WidgetCardProps {
   icon: React.ReactNode;
   children: React.ReactNode;
   editable?: boolean;
-  onRemove?: () => void;
+  isHidden?: boolean;
+  onToggleHide?: () => void;
 }
 
-function WidgetCard({ title, icon, children, editable = true, onRemove }: WidgetCardProps) {
+function WidgetCard({ title, icon, children, editable = true, isHidden = false, onToggleHide }: WidgetCardProps) {
   return (
-    <div className="h-full w-full rounded-3xl border border-border bg-card shadow-lg overflow-hidden flex flex-col transition-shadow hover:shadow-xl">
+    <div className={cn(
+      "h-full w-full rounded-3xl border border-border bg-card shadow-lg overflow-hidden flex flex-col transition-all hover:shadow-xl",
+      editable && "ring-2 ring-primary/20",
+      isHidden && "opacity-40"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2">
-          <span className="text-primary">{icon}</span>
-          <h3 className="font-semibold text-sm">{title}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-primary shrink-0">{icon}</span>
+          <h3 className="font-semibold text-sm truncate">{title}</h3>
         </div>
-        
+
         {editable && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Drag Handle */}
             <div className="drag-handle cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted transition-colors">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
-            
-            {/* Remove Button */}
-            {onRemove && (
+
+            {/* Hide/Show Toggle Button */}
+            {onToggleHide && (
               <button
-                onClick={onRemove}
-                className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
+                onClick={onToggleHide}
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors",
+                  isHidden
+                    ? "hover:bg-primary/10 hover:text-primary"
+                    : "hover:bg-muted"
+                )}
+                title={isHidden ? 'Show' : 'Hide'}
               >
-                <X className="h-4 w-4" />
+                {isHidden ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                )}
               </button>
             )}
           </div>
         )}
       </div>
-      
+
       {/* Content */}
-      <div className="flex-1 p-4 overflow-auto">
+      <div className="flex-1 p-4 overflow-auto min-h-0">
         {children}
       </div>
     </div>
@@ -107,11 +124,11 @@ export function BentoDashboard({
   onLayoutChange,
   editable = true,
 }: BentoDashboardProps) {
-  
+
   // Generate default layout if not provided
   const defaultLayout: Layout[] = useMemo(() => {
     if (initialLayout) return initialLayout;
-    
+
     // Auto-generate layout based on widget index
     return widgets.map((widget, index) => ({
       i: widget.id,
@@ -128,16 +145,25 @@ export function BentoDashboard({
 
   const [layout, setLayout] = useState<Layout[]>(defaultLayout);
   const [containerWidth, setContainerWidth] = useState(1200);
-  
+  const [hiddenWidgets, setHiddenWidgets] = useState<Set<string>>(new Set());
+
   // Handle layout change
   const handleLayoutChange = useCallback((newLayout: Layout[]) => {
     setLayout(newLayout);
     onLayoutChange?.(newLayout);
   }, [onLayoutChange]);
 
-  // Handle widget removal
-  const handleRemoveWidget = useCallback((widgetId: string) => {
-    setLayout(prev => prev.filter(item => item.i !== widgetId));
+  // Handle widget hide toggle
+  const handleToggleHide = useCallback((widgetId: string) => {
+    setHiddenWidgets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(widgetId)) {
+        newSet.delete(widgetId);
+      } else {
+        newSet.add(widgetId);
+      }
+      return newSet;
+    });
   }, []);
 
   // Measure container width
@@ -153,16 +179,21 @@ export function BentoDashboard({
     }
   }, []);
 
-  // Filter widgets to only show ones in layout
-  const visibleWidgets = widgets.filter(widget => 
-    layout.some(item => item.i === widget.id)
-  );
+  // In edit mode, show all widgets. In view mode, hide hidden widgets.
+  const visibleWidgets = editable
+    ? widgets
+    : widgets.filter(widget => !hiddenWidgets.has(widget.id));
+
+  // In edit mode, use full layout. In view mode, filter hidden widgets.
+  const visibleLayout = editable
+    ? layout
+    : layout.filter(item => !hiddenWidgets.has(item.i));
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full bento-dashboard">
       <GridLayout
         className="layout"
-        layout={layout}
+        layout={visibleLayout}
         cols={columns}
         rowHeight={rowHeight}
         width={containerWidth}
@@ -182,7 +213,8 @@ export function BentoDashboard({
               title={widget.title}
               icon={widget.icon}
               editable={editable}
-              onRemove={editable ? () => handleRemoveWidget(widget.id) : undefined}
+              isHidden={hiddenWidgets.has(widget.id)}
+              onToggleHide={editable ? () => handleToggleHide(widget.id) : undefined}
             >
               {widget.component}
             </WidgetCard>
@@ -206,7 +238,7 @@ export const presetLayouts = {
     { i: 'recent-errors', x: 0, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
     { i: 'token-usage', x: 6, y: 6, w: 6, h: 4, minW: 3, minH: 3 },
   ],
-  
+
   // Compact layout for smaller screens
   compact: [
     { i: 'kpi-executions', x: 0, y: 0, w: 6, h: 2, minW: 3, minH: 2 },
@@ -215,7 +247,7 @@ export const presetLayouts = {
     { i: 'distribution', x: 0, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
     { i: 'recent-errors', x: 6, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
   ],
-  
+
   // Analytics focused
   analytics: [
     { i: 'timeline', x: 0, y: 0, w: 12, h: 4, minW: 6, minH: 3 },
@@ -234,15 +266,17 @@ interface LayoutSelectorProps {
 }
 
 export function LayoutSelector({ currentLayout, onSelect }: LayoutSelectorProps) {
+  const { t } = useTranslation();
+
   const layouts = [
-    { name: 'overview', label: 'Overview' },
-    { name: 'compact', label: 'Compact' },
-    { name: 'analytics', label: 'Analytics' },
+    { name: 'overview', labelKey: 'layout.overview' },
+    { name: 'compact', labelKey: 'layout.compact' },
+    { name: 'analytics', labelKey: 'layout.analytics' },
   ];
 
   return (
     <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
-      {layouts.map(({ name, label }) => (
+      {layouts.map(({ name, labelKey }) => (
         <button
           key={name}
           onClick={() => onSelect(name)}
@@ -253,7 +287,7 @@ export function LayoutSelector({ currentLayout, onSelect }: LayoutSelectorProps)
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          {label}
+          {t(labelKey)}
         </button>
       ))}
     </div>
@@ -267,6 +301,8 @@ interface EditModeToggleProps {
 }
 
 export function EditModeToggle({ isEditing, onToggle }: EditModeToggleProps) {
+  const { t } = useTranslation();
+
   return (
     <button
       onClick={onToggle}
@@ -278,7 +314,7 @@ export function EditModeToggle({ isEditing, onToggle }: EditModeToggleProps) {
       )}
     >
       <Maximize2 className="h-4 w-4" />
-      {isEditing ? 'Done Editing' : 'Edit Layout'}
+      {isEditing ? t('layout.doneEditing') : t('layout.editLayout')}
     </button>
   );
 }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { useDashboardStore } from '@/lib/stores/useDashboardStore';
+import { useTranslation } from '@/lib/i18n';
 import { TimeRangeSelector, FillModeSelector } from '@/components/ui/TimeRangeSelector';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SurferChart, type FillMode } from '@/components/dashboard/SurferChart';
@@ -30,10 +31,12 @@ interface ErrorDistributionProps {
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
 
 function ErrorDistributionChart({ data }: ErrorDistributionProps) {
+    const { t } = useTranslation();
+
     if (!data || data.length === 0) {
         return (
             <div className="flex items-center justify-center h-48 text-muted-foreground">
-                No error data
+                {t('common.noData')}
             </div>
         );
     }
@@ -81,6 +84,7 @@ interface ErrorTrendChartProps {
 function ErrorTrendChart({ timeRange, fillMode }: ErrorTrendChartProps) {
     const bucketSize = Math.max(60, Math.floor(timeRange / 24));
     const { data: trends, isLoading } = useErrorTrends(timeRange, bucketSize);
+    const { t } = useTranslation();
 
     if (isLoading) {
         return (
@@ -120,6 +124,7 @@ interface SummaryCardsProps {
 
 function SummaryCards({ timeRange }: SummaryCardsProps) {
     const { data: summary, isLoading } = useErrorSummary(timeRange);
+    const { t } = useTranslation();
 
     if (isLoading) {
         return (
@@ -137,7 +142,7 @@ function SummaryCards({ timeRange }: SummaryCardsProps) {
         <div className="grid gap-4 md:grid-cols-4">
             {/* Total Errors */}
             <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
-                <p className="text-sm text-muted-foreground mb-1">Total Errors</p>
+                <p className="text-sm text-muted-foreground mb-1">{t('errors.totalErrors')}</p>
                 <p className="text-3xl font-bold text-red-500">
                     {formatNumber(summary?.total_errors || 0)}
                 </p>
@@ -146,7 +151,7 @@ function SummaryCards({ timeRange }: SummaryCardsProps) {
             {/* Top Error Codes */}
             {topErrors.map((item) => (
                 <div key={item.error_code} className="rounded-2xl border border-border bg-card p-4">
-                    <p className="text-sm text-muted-foreground mb-1">{item.error_code}</p>
+                    <p className="text-sm text-muted-foreground mb-1 truncate">{item.error_code}</p>
                     <p className="text-3xl font-bold">{formatNumber(item.count)}</p>
                 </div>
             ))}
@@ -176,13 +181,15 @@ interface ErrorCardProps {
 }
 
 function ErrorCard({ error }: ErrorCardProps) {
+    const { t } = useTranslation();
+
     return (
         <div className="rounded-2xl border border-red-500/20 bg-card p-4 hover:border-red-500/40 transition-colors">
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     {/* Function & Error Code */}
-                    <div className="flex items-center gap-2 mb-2">
-                        <code className="text-sm font-semibold">{error.function_name}</code>
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <code className="text-sm font-semibold truncate">{error.function_name}</code>
                         <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400">
                             {error.error_code}
                         </span>
@@ -209,7 +216,7 @@ function ErrorCard({ error }: ErrorCardProps) {
                     href={`/traces/${error.trace_id}`}
                     className="flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
                 >
-                    View Trace
+                    {t('errors.viewTrace')}
                     <ExternalLink className="h-3 w-3" />
                 </a>
             </div>
@@ -221,6 +228,7 @@ function ErrorCard({ error }: ErrorCardProps) {
 export default function ErrorsPage() {
     // 전역 스토어에서 timeRangeMinutes, fillMode 직접 사용
     const { timeRangeMinutes, fillMode } = useDashboardStore();
+    const { t } = useTranslation();
 
     // 로컬 상태 (검색 및 필터는 페이지별로 다를 수 있으므로 유지)
     const [searchQuery, setSearchQuery] = useState('');
@@ -242,13 +250,13 @@ export default function ErrorsPage() {
     const errorCodes = [...new Set((errors?.items || []).map(e => e.error_code).filter(Boolean))];
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6 p-4 md:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Errors</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">{t('errors.title')}</h1>
                     <p className="text-muted-foreground">
-                        Analyze error patterns and search by message
+                        {t('errors.subtitle')}
                     </p>
                 </div>
                 <TimeRangeSelector />
@@ -261,10 +269,10 @@ export default function ErrorsPage() {
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Trend Chart */}
                 <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                            <h3 className="font-semibold">Error Trend</h3>
+                            <h3 className="font-semibold">{t('errors.trend')}</h3>
                         </div>
                         <FillModeSelector />
                     </div>
@@ -275,7 +283,7 @@ export default function ErrorsPage() {
                 <div className="rounded-2xl border border-border bg-card p-4">
                     <div className="flex items-center gap-2 mb-4">
                         <PieChart className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="font-semibold">Error Distribution</h3>
+                        <h3 className="font-semibold">{t('errors.distribution')}</h3>
                     </div>
                     <ErrorDistributionChart data={distribution || []} />
                 </div>
@@ -284,11 +292,11 @@ export default function ErrorsPage() {
             {/* Search & Filters */}
             <div className="flex flex-wrap items-center gap-3">
                 {/* Semantic Search */}
-                <div className="relative flex-1 min-w-[250px] max-w-lg">
+                <div className="relative flex-1 min-w-[200px] max-w-lg">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="text"
-                        placeholder="Search errors by message (semantic search)..."
+                        placeholder={t('errors.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -298,10 +306,10 @@ export default function ErrorsPage() {
                 {/* Function Filter */}
                 <input
                     type="text"
-                    placeholder="Function..."
+                    placeholder={t('errors.functionFilter')}
                     value={functionFilter}
                     onChange={(e) => setFunctionFilter(e.target.value)}
-                    className="w-36 rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
+                    className="w-28 rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
                 />
 
                 {/* Error Code Filter */}
@@ -310,7 +318,7 @@ export default function ErrorsPage() {
                     onChange={(e) => setErrorCodeFilter(e.target.value)}
                     className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
                 >
-                    <option value="">All Error Codes</option>
+                    <option value="">{t('errors.allCodes')}</option>
                     {errorCodes.map((code) => (
                         <option key={code} value={code}>{code}</option>
                     ))}
@@ -327,13 +335,13 @@ export default function ErrorsPage() {
                         className="flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                     >
                         <X className="h-3 w-3" />
-                        Clear
+                        {t('common.clear')}
                     </button>
                 )}
 
                 {/* Results count */}
                 <span className="text-sm text-muted-foreground ml-auto">
-                    {displayErrors?.length || 0} errors
+                    {displayErrors?.length || 0} {t('common.error')}
                 </span>
             </div>
 
@@ -346,7 +354,7 @@ export default function ErrorsPage() {
                 ) : !displayErrors || displayErrors.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                         <AlertTriangle className="h-12 w-12 mb-4 opacity-50" />
-                        <p>No errors found</p>
+                        <p>{t('errors.noErrors')}</p>
                         {(searchQuery || functionFilter || errorCodeFilter) && (
                             <button
                                 onClick={() => {
@@ -356,7 +364,7 @@ export default function ErrorsPage() {
                                 }}
                                 className="mt-2 text-sm text-primary hover:underline"
                             >
-                                Clear filters
+                                {t('common.clearFilters')}
                             </button>
                         )}
                     </div>

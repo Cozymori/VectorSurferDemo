@@ -19,6 +19,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TimeRangeSelector } from '@/components/ui/TimeRangeSelector';
 import { useExecutions, useSlowestExecutions, useExecution } from '@/lib/hooks/useApi';
 import { useDashboardStore } from '@/lib/stores/useDashboardStore';
+import { useTranslation } from '@/lib/i18n';
 import { formatDuration, timeAgo } from '@/lib/utils';
 import type { ExecutionFilters } from '@/lib/types/api';
 
@@ -32,6 +33,7 @@ interface ExecutionDetailModalProps {
 
 function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
     const { data: execution, isLoading } = useExecution(spanId || '');
+    const { t } = useTranslation();
 
     if (!spanId) return null;
 
@@ -47,7 +49,7 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
             <div className="relative z-10 w-full max-w-2xl max-h-[80vh] overflow-auto rounded-2xl border border-border bg-card shadow-2xl mx-4">
                 {/* Header */}
                 <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-4">
-                    <h2 className="text-lg font-semibold">Execution Details</h2>
+                    <h2 className="text-lg font-semibold">{t('executions.details')}</h2>
                     <button
                         onClick={onClose}
                         className="rounded-lg p-2 hover:bg-muted transition-colors"
@@ -60,11 +62,11 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
                 <div className="p-6">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-12 text-muted-foreground">
-                            Loading...
+                            {t('common.loading')}
                         </div>
                     ) : !execution ? (
                         <div className="flex items-center justify-center py-12 text-muted-foreground">
-                            Execution not found
+                            {t('executions.notFound')}
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -79,17 +81,17 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
                             {/* Function Info */}
                             <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
                                 <div>
-                                    <p className="text-xs text-muted-foreground mb-1">Function</p>
+                                    <p className="text-xs text-muted-foreground mb-1">{t('executions.function')}</p>
                                     <code className="text-sm font-semibold">{execution.function_name}</code>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Duration</p>
+                                        <p className="text-xs text-muted-foreground mb-1">{t('executions.duration')}</p>
                                         <p className="text-sm font-medium">{formatDuration(execution.duration_ms)}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Team</p>
+                                        <p className="text-xs text-muted-foreground mb-1">{t('executions.team')}</p>
                                         <p className="text-sm font-medium">{execution.team || '-'}</p>
                                     </div>
                                 </div>
@@ -157,6 +159,7 @@ function ExecutionDetailModal({ spanId, onClose }: ExecutionDetailModalProps) {
 function SlowestExecutionsSection() {
     const { data: slowest, isLoading } = useSlowestExecutions(5);
     const [selectedSpan, setSelectedSpan] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     if (isLoading) {
         return (
@@ -175,7 +178,7 @@ function SlowestExecutionsSection() {
             <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
                 <div className="flex items-center gap-2 mb-4">
                     <Clock className="h-4 w-4 text-orange-500" />
-                    <h3 className="font-semibold text-orange-500">Slowest Executions</h3>
+                    <h3 className="font-semibold text-orange-500">{t('executions.slowest')}</h3>
                 </div>
 
                 <div className="grid gap-2 md:grid-cols-5">
@@ -210,6 +213,7 @@ export default function ExecutionsPage() {
 
     // 전역 스토어에서 timeRangeMinutes 직접 사용
     const { timeRangeMinutes } = useDashboardStore();
+    const { t } = useTranslation();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('');
@@ -236,13 +240,13 @@ export default function ExecutionsPage() {
     };
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6 p-4 md:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Executions</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">{t('executions.title')}</h1>
                     <p className="text-muted-foreground">
-                        Browse and filter function execution logs
+                        {t('executions.subtitle')}
                     </p>
                 </div>
                 <TimeRangeSelector />
@@ -258,7 +262,7 @@ export default function ExecutionsPage() {
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="text"
-                        placeholder="Search by function name..."
+                        placeholder={t('executions.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => handleFilterChange(setSearchQuery)(e.target.value)}
                         className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -271,19 +275,19 @@ export default function ExecutionsPage() {
                     onChange={(e) => handleFilterChange(setStatusFilter)(e.target.value)}
                     className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                    <option value="">All Status</option>
-                    <option value="SUCCESS">Success</option>
-                    <option value="ERROR">Error</option>
+                    <option value="">{t('status.allStatus')}</option>
+                    <option value="SUCCESS">{t('status.success')}</option>
+                    <option value="ERROR">{t('common.error')}</option>
                     <option value="CACHE_HIT">Cache Hit</option>
                 </select>
 
                 {/* Team Filter */}
                 <input
                     type="text"
-                    placeholder="Filter by team..."
+                    placeholder={t('executions.filterByTeam')}
                     value={teamFilter}
                     onChange={(e) => handleFilterChange(setTeamFilter)(e.target.value)}
-                    className="w-32 rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-28 rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
 
                 {/* Clear Filters */}
@@ -298,88 +302,88 @@ export default function ExecutionsPage() {
                         className="flex items-center gap-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                     >
                         <X className="h-3 w-3" />
-                        Clear
+                        {t('common.clear')}
                     </button>
                 )}
 
                 {/* Results count */}
                 <span className="text-sm text-muted-foreground ml-auto">
-                    {total} results
+                    {total} {t('common.results')}
                 </span>
             </div>
 
             {/* Table */}
-            <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                <table className="w-full">
+            <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden overflow-x-auto">
+                <table className="w-full min-w-[600px]">
                     <thead className="border-b border-border bg-muted/50">
-                    <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Function</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Duration</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Team</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Time</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
-                    </tr>
+                        <tr>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('executions.function')}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('executions.duration')}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('executions.team')}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('executions.time')}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">{t('executions.actions')}</th>
+                        </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                    {isLoading ? (
-                        <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                                Loading...
-                            </td>
-                        </tr>
-                    ) : executions.length === 0 ? (
-                        <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                                <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                No executions found
-                            </td>
-                        </tr>
-                    ) : (
-                        executions.map((exec) => (
-                            <tr key={exec.span_id} className="hover:bg-muted/30 transition-colors">
-                                <td className="px-4 py-3">
-                                    <button
-                                        onClick={() => setSelectedSpan(exec.span_id)}
-                                        className="text-left hover:text-primary transition-colors"
-                                    >
-                                        <code className="text-sm font-medium">{exec.function_name}</code>
-                                    </button>
-                                    {exec.error_message && (
-                                        <p className="text-xs text-red-400 mt-1 line-clamp-1">{exec.error_message}</p>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3">
-                                    <StatusBadge status={exec.status} size="sm" />
-                                </td>
-                                <td className="px-4 py-3 text-sm text-muted-foreground">
-                                    {formatDuration(exec.duration_ms)}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-muted-foreground">
-                                    {exec.team || '-'}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-muted-foreground">
-                                    {timeAgo(exec.timestamp_utc)}
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setSelectedSpan(exec.span_id)}
-                                            className="text-xs text-primary hover:underline"
-                                        >
-                                            Details
-                                        </button>
-                                        <a
-                                            href={`/traces/${exec.trace_id}`}
-                                            className="text-xs text-muted-foreground hover:text-primary"
-                                        >
-                                            Trace
-                                        </a>
-                                    </div>
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                                    {t('common.loading')}
                                 </td>
                             </tr>
-                        ))
-                    )}
+                        ) : executions.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                    {t('common.noData')}
+                                </td>
+                            </tr>
+                        ) : (
+                            executions.map((exec) => (
+                                <tr key={exec.span_id} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-4 py-3">
+                                        <button
+                                            onClick={() => setSelectedSpan(exec.span_id)}
+                                            className="text-left hover:text-primary transition-colors"
+                                        >
+                                            <code className="text-sm font-medium">{exec.function_name}</code>
+                                        </button>
+                                        {exec.error_message && (
+                                            <p className="text-xs text-red-400 mt-1 line-clamp-1">{exec.error_message}</p>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <StatusBadge status={exec.status} size="sm" />
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {formatDuration(exec.duration_ms)}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {exec.team || '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {timeAgo(exec.timestamp_utc)}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setSelectedSpan(exec.span_id)}
+                                                className="text-xs text-primary hover:underline"
+                                            >
+                                                {t('executions.viewDetails')}
+                                            </button>
+                                            <a
+                                                href={`/traces/${exec.trace_id}`}
+                                                className="text-xs text-muted-foreground hover:text-primary"
+                                            >
+                                                {t('executions.viewTrace')}
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
 
@@ -387,7 +391,7 @@ export default function ExecutionsPage() {
                 {totalPages > 1 && (
                     <div className="flex items-center justify-between border-t border-border px-4 py-3">
                         <span className="text-sm text-muted-foreground">
-                            Page {page + 1} of {totalPages}
+                            {t('common.page')} {page + 1} {t('common.of')} {totalPages}
                         </span>
                         <div className="flex items-center gap-2">
                             <button

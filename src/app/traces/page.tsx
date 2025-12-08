@@ -6,23 +6,25 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  GitBranch, 
-  Search, 
-  ExternalLink, 
-  Clock, 
+import {
+  GitBranch,
+  Search,
+  ExternalLink,
+  Clock,
   Layers,
   Filter,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useTraces } from '@/lib/hooks/useApi';
+import { useTranslation } from '@/lib/i18n';
 import { formatDuration, timeAgo, cn } from '@/lib/utils';
 
 export default function TracesPage() {
   const [limit, setLimit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const { t } = useTranslation();
+
   const { data, isLoading } = useTraces(limit);
 
   // Filter traces
@@ -33,13 +35,13 @@ export default function TracesPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Traces</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('traces.title')}</h1>
           <p className="text-muted-foreground">
-            View distributed traces and execution flows
+            {t('traces.subtitle')}
           </p>
         </div>
         <select
@@ -47,9 +49,9 @@ export default function TracesPage() {
           onChange={(e) => setLimit(Number(e.target.value))}
           className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
         >
-          <option value={20}>Last 20</option>
-          <option value={50}>Last 50</option>
-          <option value={100}>Last 100</option>
+          <option value={20}>{t('traces.last20')}</option>
+          <option value={50}>{t('traces.last50')}</option>
+          <option value={100}>{t('traces.last100')}</option>
         </select>
       </div>
 
@@ -60,7 +62,7 @@ export default function TracesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by root function..."
+            placeholder={t('traces.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -73,10 +75,10 @@ export default function TracesPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
         >
-          <option value="">All Status</option>
-          <option value="SUCCESS">Success</option>
-          <option value="ERROR">Error</option>
-          <option value="PARTIAL">Partial</option>
+          <option value="">{t('status.allStatus')}</option>
+          <option value="SUCCESS">{t('status.success')}</option>
+          <option value="ERROR">{t('common.error')}</option>
+          <option value="PARTIAL">{t('status.partial')}</option>
         </select>
 
         {/* Results count */}
@@ -97,7 +99,7 @@ export default function TracesPage() {
         ) : traces.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
             <GitBranch className="h-12 w-12 mb-4 opacity-50" />
-            <p>No traces found</p>
+            <p>{t('traces.noTraces')}</p>
             {(searchQuery || statusFilter) && (
               <button
                 onClick={() => {
@@ -106,7 +108,7 @@ export default function TracesPage() {
                 }}
                 className="mt-2 text-sm text-primary hover:underline"
               >
-                Clear filters
+                {t('common.clearFilters')}
               </button>
             )}
           </div>
@@ -133,7 +135,7 @@ export default function TracesPage() {
                 <div className="rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Clock className="h-3 w-3" />
-                    <span className="text-xs">Duration</span>
+                    <span className="text-xs">{t('traces.duration')}</span>
                   </div>
                   <p className="font-semibold">
                     {formatDuration(trace.total_duration_ms)}
@@ -142,7 +144,7 @@ export default function TracesPage() {
                 <div className="rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Layers className="h-3 w-3" />
-                    <span className="text-xs">Spans</span>
+                    <span className="text-xs">{t('traces.spans')}</span>
                   </div>
                   <p className="font-semibold">{trace.span_count}</p>
                 </div>
@@ -154,7 +156,7 @@ export default function TracesPage() {
                   {timeAgo(trace.start_time)}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                  View details <ExternalLink className="h-3 w-3" />
+                  {t('traces.viewDetails')} <ExternalLink className="h-3 w-3" />
                 </span>
               </div>
             </Link>

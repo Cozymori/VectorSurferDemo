@@ -21,6 +21,7 @@ import {
     Layers,
 } from 'lucide-react';
 import { useHealableFunctions, useDiagnose, useBatchDiagnose } from '@/lib/hooks/useApi';
+import { useTranslation } from '@/lib/i18n';
 import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import type { DiagnosisResult, HealableFunction } from '@/lib/types/api';
 
@@ -35,6 +36,7 @@ interface CodeBlockProps {
 
 function CodeBlock({ code, language = 'typescript' }: CodeBlockProps) {
     const [copied, setCopied] = useState(false);
+    const { t } = useTranslation();
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(code);
@@ -53,12 +55,12 @@ function CodeBlock({ code, language = 'typescript' }: CodeBlockProps) {
                     {copied ? (
                         <>
                             <Check className="h-3 w-3" />
-                            Copied!
+                            {t('healer.copied')}
                         </>
                     ) : (
                         <>
                             <Copy className="h-3 w-3" />
-                            Copy
+                            {t('healer.copy')}
                         </>
                     )}
                 </button>
@@ -76,6 +78,7 @@ interface DiagnosisCardProps {
 }
 
 function DiagnosisCard({ result }: DiagnosisCardProps) {
+    const { t } = useTranslation();
     const statusColors = {
         success: 'border-green-500/30 bg-green-500/5',
         no_errors: 'border-blue-500/30 bg-blue-500/5',
@@ -95,7 +98,7 @@ function DiagnosisCard({ result }: DiagnosisCardProps) {
                 <div className="flex items-center gap-3">
                     {statusIcons[result.status]}
                     <div>
-                        <h3 className="font-semibold">Diagnosis Result</h3>
+                        <h3 className="font-semibold">{t('healer.diagnosisResult')}</h3>
                         <p className="text-xs text-muted-foreground">
                             {result.function_name} • Lookback: {result.lookback_minutes} minutes
                         </p>
@@ -107,8 +110,8 @@ function DiagnosisCard({ result }: DiagnosisCardProps) {
                     result.status === 'no_errors' && 'bg-blue-500/20 text-blue-400',
                     result.status === 'error' && 'bg-red-500/20 text-red-400'
                 )}>
-                    {result.status === 'success' ? 'Fix Suggested' :
-                        result.status === 'no_errors' ? 'No Errors Found' : 'Analysis Failed'}
+                    {result.status === 'success' ? t('healer.fixSuggested') :
+                        result.status === 'no_errors' ? t('healer.noErrors') : t('healer.failed')}
                 </span>
             </div>
 
@@ -116,7 +119,7 @@ function DiagnosisCard({ result }: DiagnosisCardProps) {
             <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    Analysis
+                    {t('healer.analysis')}
                 </h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {result.diagnosis}
@@ -128,7 +131,7 @@ function DiagnosisCard({ result }: DiagnosisCardProps) {
                 <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                         <Code className="h-4 w-4 text-primary" />
-                        Suggested Fix
+                        {t('healer.suggestedFix')}
                     </h4>
                     <CodeBlock code={result.suggested_fix} />
                 </div>
@@ -151,6 +154,7 @@ interface BatchResultCardProps {
 
 function BatchResultCard({ results, succeeded, failed, total }: BatchResultCardProps) {
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+    const { t } = useTranslation();
 
     return (
         <div className="rounded-2xl border border-border bg-card p-6">
@@ -159,9 +163,9 @@ function BatchResultCard({ results, succeeded, failed, total }: BatchResultCardP
                 <div className="flex items-center gap-3">
                     <Layers className="h-5 w-5 text-primary" />
                     <div>
-                        <h3 className="font-semibold">Batch Diagnosis Results</h3>
+                        <h3 className="font-semibold">{t('healer.batchResults')}</h3>
                         <p className="text-xs text-muted-foreground">
-                            {total} functions analyzed
+                            {total} {t('healer.functionsAnalyzed')}
                         </p>
                     </div>
                 </div>
@@ -231,7 +235,7 @@ function BatchResultCard({ results, succeeded, failed, total }: BatchResultCardP
                                     <div className="mt-2">
                                         <div className="flex items-center gap-2 mb-1.5 text-xs font-medium text-primary">
                                             <Code className="h-3 w-3" />
-                                            Suggested Fix
+                                            {t('healer.suggestedFix')}
                                         </div>
                                         {/* CodeBlock 컴포넌트 사용 */}
                                         <CodeBlock code={result.suggested_fix} />
@@ -260,16 +264,17 @@ interface FilterSectionProps {
 }
 
 function FilterSection({
-                           functionFilter,
-                           setFunctionFilter,
-                           timeRangeFilter,
-                           setTimeRangeFilter,
-                           errorCodeFilter,
-                           setErrorCodeFilter,
-                           availableErrorCodes,
-                           onClear,
-                           disabled = false,
-                       }: FilterSectionProps) {
+    functionFilter,
+    setFunctionFilter,
+    timeRangeFilter,
+    setTimeRangeFilter,
+    errorCodeFilter,
+    setErrorCodeFilter,
+    availableErrorCodes,
+    onClear,
+    disabled = false,
+}: FilterSectionProps) {
+    const { t } = useTranslation();
     const hasFilters = functionFilter || errorCodeFilter || timeRangeFilter !== 1440;
 
     return (
@@ -280,7 +285,7 @@ function FilterSection({
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Filters</span>
+                    <span className="text-sm font-medium">{t('healer.filters')}</span>
                 </div>
                 {hasFilters && (
                     <button
@@ -289,7 +294,7 @@ function FilterSection({
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
                     >
                         <X className="h-3 w-3" />
-                        Clear
+                        {t('common.clear')}
                     </button>
                 )}
             </div>
@@ -300,7 +305,7 @@ function FilterSection({
                     <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="text"
-                        placeholder="Function name..."
+                        placeholder={t('healer.functionName')}
                         value={functionFilter}
                         onChange={(e) => setFunctionFilter(e.target.value)}
                         disabled={disabled}
@@ -315,12 +320,12 @@ function FilterSection({
                     disabled={disabled}
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-muted"
                 >
-                    <option value={60}>Last 1 hour</option>
-                    <option value={360}>Last 6 hours</option>
-                    <option value={1440}>Last 24 hours</option>
-                    <option value={4320}>Last 3 days</option>
-                    <option value={10080}>Last 7 days</option>
-                    <option value={0}>⚠️ All Time (may be slow)</option>
+                    <option value={60}>{t('healer.last1h')}</option>
+                    <option value={360}>{t('healer.last6h')}</option>
+                    <option value={1440}>{t('healer.last24h')}</option>
+                    <option value={4320}>{t('healer.last3d')}</option>
+                    <option value={10080}>{t('healer.last7d')}</option>
+                    <option value={0}>{t('healer.allTime')}</option>
                 </select>
 
                 {/* Error Code Filter */}
@@ -330,7 +335,7 @@ function FilterSection({
                     disabled={disabled}
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-muted"
                 >
-                    <option value="">All Error Codes</option>
+                    <option value="">{t('healer.allCodes')}</option>
                     {availableErrorCodes.map((code) => (
                         <option key={code} value={code}>{code}</option>
                     ))}
@@ -348,6 +353,7 @@ interface ModeSelectorProps {
 }
 
 function ModeSelector({ mode, onModeChange, disabled }: ModeSelectorProps) {
+    const { t } = useTranslation();
     return (
         <div className={cn(
             'flex items-center gap-1 rounded-xl bg-muted p-1',
@@ -363,7 +369,7 @@ function ModeSelector({ mode, onModeChange, disabled }: ModeSelectorProps) {
                 )}
             >
                 <Sparkles className="h-3 w-3" />
-                Single
+                {t('healer.single')}
             </button>
             <button
                 onClick={() => onModeChange('batch')}
@@ -375,7 +381,7 @@ function ModeSelector({ mode, onModeChange, disabled }: ModeSelectorProps) {
                 )}
             >
                 <Layers className="h-3 w-3" />
-                Batch
+                {t('healer.batch')}
             </button>
         </div>
     );
@@ -393,14 +399,15 @@ interface FunctionCardProps {
 }
 
 function FunctionCard({
-                          func,
-                          isSelected,
-                          isChecked = false,
-                          showCheckbox = false,
-                          onClick,
-                          onCheckChange,
-                          disabled = false
-                      }: FunctionCardProps) {
+    func,
+    isSelected,
+    isChecked = false,
+    showCheckbox = false,
+    onClick,
+    onCheckChange,
+    disabled = false
+}: FunctionCardProps) {
+    const { t } = useTranslation();
     const handleCheckClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         onCheckChange?.(!isChecked);
@@ -437,7 +444,7 @@ function FunctionCard({
                     <code className="text-sm font-semibold truncate">{func.function_name}</code>
                 </div>
                 <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400 shrink-0">
-                    {formatNumber(func.error_count)} errors
+                    {formatNumber(func.error_count)} {t('healer.errors')}
                 </span>
             </div>
 
@@ -453,14 +460,14 @@ function FunctionCard({
                 ))}
                 {func.error_codes.length > 3 && (
                     <span className="text-xs text-muted-foreground">
-                        +{func.error_codes.length - 3} more
+                        +{func.error_codes.length - 3} {t('healer.more')}
                     </span>
                 )}
             </div>
 
             <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Last error: {timeAgo(func.latest_error_time)}
+                {t('healer.lastError')}: {timeAgo(func.latest_error_time)}
             </p>
         </div>
     );
@@ -555,6 +562,7 @@ interface LoadingOverlayProps {
 }
 
 function LoadingOverlay({ mode, count = 1 }: LoadingOverlayProps) {
+    const { t } = useTranslation();
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 shadow-2xl">
@@ -564,19 +572,17 @@ function LoadingOverlay({ mode, count = 1 }: LoadingOverlayProps) {
                 </div>
                 <div className="text-center">
                     <h3 className="font-semibold text-lg">
-                        {mode === 'batch' ? 'Batch Diagnosis in Progress' : 'AI Diagnosis in Progress'}
+                        {mode === 'batch' ? t('healer.batchInProgress') : t('healer.diagnosisInProgress')}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
                         {mode === 'batch'
-                            ? `Analyzing ${count} functions in parallel...`
-                            : 'Analyzing error patterns and generating fix suggestions...'}
+                            ? `${count} ${t('healer.analyzingFunctions')}`
+                            : t('healer.analyzingPatterns')}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                    {mode === 'batch'
-                        ? 'This may take several minutes'
-                        : 'This may take up to 30 seconds'}
+                    {mode === 'batch' ? t('healer.maySeveral') : t('healer.mayTake30')}
                 </div>
             </div>
         </div>

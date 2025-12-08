@@ -18,6 +18,7 @@ import {
     Check,
 } from 'lucide-react';
 import { useDashboardStore, TIME_RANGE_PRESETS } from '@/lib/stores/useDashboardStore';
+import { useTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 // ============ Main Component ============
@@ -28,6 +29,7 @@ export function TimeRangeSelector() {
         setTimeRangePreset,
         setTimeRangeCustom,
     } = useDashboardStore();
+    const { t, language } = useTranslation();
 
     const [isOpen, setIsOpen] = useState(false);
     const [showCustom, setShowCustom] = useState(false);
@@ -46,6 +48,22 @@ export function TimeRangeSelector() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Localized preset labels
+    const getPresetLabel = (value: number): string => {
+        const presetMap: { [key: number]: string } = {
+            15: t('timeRange.presets.15m'),
+            30: t('timeRange.presets.30m'),
+            60: t('timeRange.presets.1h'),
+            180: t('timeRange.presets.3h'),
+            360: t('timeRange.presets.6h'),
+            720: t('timeRange.presets.12h'),
+            1440: t('timeRange.presets.24h'),
+            4320: t('timeRange.presets.3d'),
+            10080: t('timeRange.presets.7d'),
+        };
+        return presetMap[value] || `${value}m`;
+    };
 
     // 슬라이더 값 계산
     const sliderIndex = TIME_RANGE_PRESETS.findIndex(p => p.value === timeRange.preset);
@@ -94,6 +112,11 @@ export function TimeRangeSelector() {
         setCustomEnd(formatForInput(now));
     };
 
+    // Get display label
+    const displayLabel = timeRange.mode === 'preset'
+        ? getPresetLabel(timeRange.preset ?? 1440)
+        : timeRangeLabel;
+
     return (
         <div className="relative" ref={dropdownRef}>
             {/* 트리거 버튼 */}
@@ -107,7 +130,7 @@ export function TimeRangeSelector() {
             >
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
-                    {timeRangeLabel}
+                    {displayLabel}
                 </span>
                 <ChevronDown className={cn(
                     'h-4 w-4 text-muted-foreground transition-transform',
@@ -123,9 +146,9 @@ export function TimeRangeSelector() {
                             {/* 슬라이더 섹션 */}
                             <div className="mb-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-sm font-medium">빠른 선택</span>
+                                    <span className="text-sm font-medium">{t('timeRange.quickSelect')}</span>
                                     <span className="text-xs text-primary font-semibold">
-                                        {TIME_RANGE_PRESETS[currentSliderValue]?.label}
+                                        {getPresetLabel(TIME_RANGE_PRESETS[currentSliderValue]?.value ?? 1440)}
                                     </span>
                                 </div>
 
@@ -155,10 +178,10 @@ export function TimeRangeSelector() {
 
                                 {/* 슬라이더 라벨 */}
                                 <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
-                                    <span>15분</span>
-                                    <span>1시간</span>
-                                    <span>24시간</span>
-                                    <span>7일</span>
+                                    <span>{t('timeRange.presets.15m')}</span>
+                                    <span>{t('timeRange.presets.1h')}</span>
+                                    <span>{t('timeRange.presets.24h')}</span>
+                                    <span>{t('timeRange.presets.7d')}</span>
                                 </div>
                             </div>
 
@@ -175,7 +198,7 @@ export function TimeRangeSelector() {
                                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                                         )}
                                     >
-                                        {preset.label}
+                                        {getPresetLabel(preset.value)}
                                     </button>
                                 ))}
                             </div>
@@ -192,7 +215,7 @@ export function TimeRangeSelector() {
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-muted hover:bg-muted/80 transition-colors"
                             >
                                 <Calendar className="h-4 w-4" />
-                                <span className="text-sm font-medium">커스텀 범위 설정</span>
+                                <span className="text-sm font-medium">{t('timeRange.customRange')}</span>
                             </button>
                         </>
                     ) : (
@@ -200,7 +223,7 @@ export function TimeRangeSelector() {
                             {/* 커스텀 범위 입력 */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">커스텀 범위</span>
+                                    <span className="text-sm font-medium">{t('timeRange.customRange')}</span>
                                     <button
                                         onClick={() => setShowCustom(false)}
                                         className="p-1 rounded hover:bg-muted"
@@ -212,7 +235,7 @@ export function TimeRangeSelector() {
                                 {/* 시작 시간 */}
                                 <div>
                                     <label className="block text-xs text-muted-foreground mb-1.5">
-                                        시작
+                                        {t('timeRange.start')}
                                     </label>
                                     <input
                                         type="datetime-local"
@@ -225,7 +248,7 @@ export function TimeRangeSelector() {
                                 {/* 종료 시간 */}
                                 <div>
                                     <label className="block text-xs text-muted-foreground mb-1.5">
-                                        종료
+                                        {t('timeRange.end')}
                                     </label>
                                     <input
                                         type="datetime-local"
@@ -247,7 +270,7 @@ export function TimeRangeSelector() {
                                     )}
                                 >
                                     <Check className="h-4 w-4" />
-                                    적용
+                                    {t('common.apply')}
                                 </button>
                             </div>
                         </>
@@ -261,16 +284,17 @@ export function TimeRangeSelector() {
 // ============ Fill Mode Selector (전역 상태 연동) ============
 export function FillModeSelector() {
     const { fillMode, setFillMode } = useDashboardStore();
+    const { t } = useTranslation();
 
     const modes = [
-        { value: 'stroke-only' as const, label: 'Line' },
-        { value: 'gradient' as const, label: 'Gradient' },
-        { value: 'solid' as const, label: 'Solid' },
+        { value: 'stroke-only' as const, labelKey: 'chartStyle.line' },
+        { value: 'gradient' as const, labelKey: 'chartStyle.gradient' },
+        { value: 'solid' as const, labelKey: 'chartStyle.solid' },
     ];
 
     return (
         <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
-            {modes.map(({ value, label }) => (
+            {modes.map(({ value, labelKey }) => (
                 <button
                     key={value}
                     onClick={() => setFillMode(value)}
@@ -281,7 +305,7 @@ export function FillModeSelector() {
                             : 'text-muted-foreground hover:text-foreground'
                     )}
                 >
-                    {label}
+                    {t(labelKey)}
                 </button>
             ))}
         </div>

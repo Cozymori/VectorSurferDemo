@@ -5,11 +5,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { 
-  Code2, 
-  Search, 
-  MessageSquare, 
-  Loader2, 
+import {
+  Code2,
+  Search,
+  MessageSquare,
+  Loader2,
   X,
   Sliders,
   Users,
@@ -18,12 +18,13 @@ import {
   Zap,
   ExternalLink,
 } from 'lucide-react';
-import { 
-  useFunctions, 
-  useFunctionSearch, 
+import {
+  useFunctions,
+  useFunctionSearch,
   useFunctionHybridSearch,
   useFunction,
 } from '@/lib/hooks/useApi';
+import { useTranslation } from '@/lib/i18n';
 import { formatNumber, formatDuration, formatPercentage, cn } from '@/lib/utils';
 import type { FunctionInfo } from '@/lib/types/api';
 
@@ -35,24 +36,25 @@ interface FunctionDetailModalProps {
 
 function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps) {
   const { data: func, isLoading } = useFunction(functionName || '');
+  const { t } = useTranslation();
 
   if (!functionName) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div className="relative z-10 w-full max-w-3xl max-h-[85vh] overflow-auto rounded-2xl border border-border bg-card shadow-2xl mx-4">
         {/* Header */}
         <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-4">
           <div className="flex items-center gap-2">
             <Code2 className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Function Details</h2>
+            <h2 className="text-lg font-semibold">{t('functions.details')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -70,7 +72,7 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
             </div>
           ) : !func ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
-              Function not found
+              {t('functions.notFound')}
             </div>
           ) : (
             <div className="space-y-6">
@@ -97,12 +99,12 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
                   <Zap className="h-5 w-5 mx-auto mb-2 text-blue-500" />
                   <p className="text-2xl font-bold">{formatNumber(func.execution_count || 0)}</p>
-                  <p className="text-xs text-muted-foreground">Executions</p>
+                  <p className="text-xs text-muted-foreground">{t('functions.executions')}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
                   <Clock className="h-5 w-5 mx-auto mb-2 text-green-500" />
                   <p className="text-2xl font-bold">{formatDuration(func.avg_duration_ms || 0)}</p>
-                  <p className="text-xs text-muted-foreground">Avg Duration</p>
+                  <p className="text-xs text-muted-foreground">{t('functions.avgDuration')}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
                   <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-red-500" />
@@ -112,14 +114,14 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
                   )}>
                     {formatPercentage(func.error_rate || 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Error Rate</p>
+                  <p className="text-xs text-muted-foreground">{t('functions.errorRate')}</p>
                 </div>
               </div>
 
               {/* Description */}
               {func.description && (
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Description</h3>
+                  <h3 className="text-sm font-medium mb-2">{t('functions.description')}</h3>
                   <p className="text-sm text-muted-foreground">{func.description}</p>
                 </div>
               )}
@@ -127,7 +129,7 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
               {/* Docstring */}
               {func.docstring && (
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Docstring</h3>
+                  <h3 className="text-sm font-medium mb-2">{t('functions.docstring')}</h3>
                   <pre className="rounded-xl bg-muted p-4 text-xs overflow-auto max-h-40 whitespace-pre-wrap">
                     {func.docstring}
                   </pre>
@@ -137,7 +139,7 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
               {/* Source Code */}
               {func.source_code && (
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Source Code</h3>
+                  <h3 className="text-sm font-medium mb-2">{t('functions.sourceCode')}</h3>
                   <pre className="rounded-xl bg-muted p-4 text-xs overflow-auto max-h-60 font-mono">
                     <code>{func.source_code}</code>
                   </pre>
@@ -145,19 +147,19 @@ function FunctionDetailModal({ functionName, onClose }: FunctionDetailModalProps
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-3 pt-4 border-t border-border">
+              <div className="flex items-center gap-3 pt-4 border-t border-border flex-wrap">
                 <a
                   href={`/executions?function_name=${encodeURIComponent(func.function_name)}`}
                   className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  View Executions
+                  {t('functions.viewExecutions')}
                   <ExternalLink className="h-4 w-4" />
                 </a>
                 <a
                   href={`/errors?function_name=${encodeURIComponent(func.function_name)}`}
                   className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
                 >
-                  View Errors
+                  {t('functions.viewErrors')}
                 </a>
               </div>
             </div>
@@ -177,6 +179,8 @@ interface SearchModeSelectorProps {
 }
 
 function SearchModeSelector({ value, onChange }: SearchModeSelectorProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
       <button
@@ -188,7 +192,7 @@ function SearchModeSelector({ value, onChange }: SearchModeSelectorProps) {
             : 'text-muted-foreground hover:text-foreground'
         )}
       >
-        Semantic
+        {t('functions.semantic')}
       </button>
       <button
         onClick={() => onChange('hybrid')}
@@ -199,7 +203,7 @@ function SearchModeSelector({ value, onChange }: SearchModeSelectorProps) {
             : 'text-muted-foreground hover:text-foreground'
         )}
       >
-        Hybrid
+        {t('functions.hybrid')}
       </button>
     </div>
   );
@@ -212,9 +216,11 @@ interface AlphaSliderProps {
 }
 
 function AlphaSlider({ value, onChange }: AlphaSliderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">Keyword</span>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">{t('functions.keyword')}</span>
       <input
         type="range"
         min={0}
@@ -223,7 +229,7 @@ function AlphaSlider({ value, onChange }: AlphaSliderProps) {
         onChange={(e) => onChange(Number(e.target.value) / 100)}
         className="w-24 h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
       />
-      <span className="text-xs text-muted-foreground whitespace-nowrap">Vector</span>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">{t('functions.vector')}</span>
       <span className="text-xs font-medium w-8">{Math.round(value * 100)}%</span>
     </div>
   );
@@ -234,6 +240,7 @@ function AskAISection() {
   const [askQuery, setAskQuery] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [askResult, setAskResult] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const handleAsk = async () => {
     if (!askQuery.trim()) return;
@@ -257,13 +264,13 @@ function AskAISection() {
     <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold">Ask AI about Functions</h3>
+        <h3 className="font-semibold">{t('functions.askAI')}</h3>
       </div>
-      
+
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="함수에 대해 질문해보세요..."
+          placeholder={t('functions.askPlaceholder')}
           value={askQuery}
           onChange={(e) => setAskQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
@@ -274,10 +281,10 @@ function AskAISection() {
           disabled={isAsking || !askQuery.trim()}
           className="rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {isAsking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ask'}
+          {isAsking ? <Loader2 className="h-4 w-4 animate-spin" /> : t('functions.ask')}
         </button>
       </div>
-      
+
       {askResult && (
         <div className="mt-4 rounded-xl bg-background border border-border p-4">
           <p className="text-sm whitespace-pre-wrap">{askResult}</p>
@@ -294,6 +301,8 @@ interface FunctionCardProps {
 }
 
 function FunctionCard({ func, onClick }: FunctionCardProps) {
+  const { t } = useTranslation();
+
   return (
     <button
       onClick={onClick}
@@ -305,19 +314,19 @@ function FunctionCard({ func, onClick }: FunctionCardProps) {
             <Code2 className="h-4 w-4 text-primary shrink-0" />
             <code className="text-sm font-semibold truncate">{func.function_name}</code>
           </div>
-          
+
           {func.module && (
             <p className="text-xs text-muted-foreground font-mono truncate mb-2">
               {func.module}
             </p>
           )}
-          
+
           {func.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {func.description}
             </p>
           )}
-          
+
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-3">
             {func.team && (
@@ -333,7 +342,7 @@ function FunctionCard({ func, onClick }: FunctionCardProps) {
           {func.execution_count !== undefined && (
             <div className="text-right">
               <p className="text-sm font-semibold">{formatNumber(func.execution_count)}</p>
-              <p className="text-xs text-muted-foreground">runs</p>
+              <p className="text-xs text-muted-foreground">{t('functions.runs')}</p>
             </div>
           )}
           {func.error_rate !== undefined && func.error_rate > 0 && (
@@ -341,7 +350,7 @@ function FunctionCard({ func, onClick }: FunctionCardProps) {
               "text-xs font-medium",
               func.error_rate > 5 ? 'text-red-500' : 'text-muted-foreground'
             )}>
-              {formatPercentage(func.error_rate)} errors
+              {formatPercentage(func.error_rate)} {t('functions.errors')}
             </span>
           )}
         </div>
@@ -357,6 +366,7 @@ export default function FunctionsPage() {
   const [alpha, setAlpha] = useState(0.5);
   const [teamFilter, setTeamFilter] = useState('');
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Fetch data based on search mode
   const { data: allFunctions, isLoading: loadingAll } = useFunctions();
@@ -373,26 +383,26 @@ export default function FunctionsPage() {
   // Determine which results to show
   const functions = useMemo(() => {
     let results: FunctionInfo[] = [];
-    
+
     if (searchQuery) {
-      results = searchMode === 'semantic' 
+      results = searchMode === 'semantic'
         ? (semanticResults?.items || [])
         : (hybridResults?.items || []);
     } else {
       results = allFunctions?.items || [];
     }
-    
+
     // Apply team filter
     if (teamFilter) {
-      results = results.filter(f => 
+      results = results.filter(f =>
         f.team?.toLowerCase().includes(teamFilter.toLowerCase())
       );
     }
-    
+
     return results;
   }, [searchQuery, searchMode, semanticResults, hybridResults, allFunctions, teamFilter]);
 
-  const isLoading = searchQuery 
+  const isLoading = searchQuery
     ? (searchMode === 'semantic' ? loadingSemantic : loadingHybrid)
     : loadingAll;
 
@@ -405,12 +415,12 @@ export default function FunctionsPage() {
   }, [allFunctions]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Functions</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('functions.title')}</h1>
         <p className="text-muted-foreground">
-          Browse registered functions and search with natural language
+          {t('functions.subtitle')}
         </p>
       </div>
 
@@ -421,11 +431,11 @@ export default function FunctionsPage() {
       <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[250px]">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search functions by description..."
+              placeholder={t('functions.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-border bg-background py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -440,11 +450,11 @@ export default function FunctionsPage() {
             <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Team..."
+              placeholder={t('executions.team') + "..."}
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
               list="teams"
-              className="w-32 rounded-xl border border-border bg-background py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-28 rounded-xl border border-border bg-background py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <datalist id="teams">
               {teams.map(team => (
@@ -463,7 +473,7 @@ export default function FunctionsPage() {
               className="flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm hover:bg-muted transition-colors"
             >
               <X className="h-3 w-3" />
-              Clear
+              {t('common.clear')}
             </button>
           )}
         </div>
@@ -473,9 +483,6 @@ export default function FunctionsPage() {
           <div className="flex items-center gap-4 pt-2 border-t border-border">
             <Sliders className="h-4 w-4 text-muted-foreground" />
             <AlphaSlider value={alpha} onChange={setAlpha} />
-            <span className="text-xs text-muted-foreground">
-              {alpha < 0.3 ? 'Keyword-focused' : alpha > 0.7 ? 'Vector-focused' : 'Balanced'}
-            </span>
           </div>
         )}
       </div>
@@ -483,13 +490,8 @@ export default function FunctionsPage() {
       {/* Results Count */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {functions.length} functions
+          {functions.length} {t('nav.functions').toLowerCase()}
         </span>
-        {searchQuery && (
-          <span className="text-xs text-muted-foreground">
-            Searching with {searchMode === 'semantic' ? 'semantic similarity' : `hybrid (α=${alpha.toFixed(1)})`}
-          </span>
-        )}
       </div>
 
       {/* Functions Grid */}
@@ -502,9 +504,9 @@ export default function FunctionsPage() {
       ) : functions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Code2 className="h-12 w-12 mb-4 opacity-50" />
-          <p>No functions found</p>
+          <p>{t('functions.noFunctions')}</p>
           {searchQuery && (
-            <p className="text-sm mt-1">Try a different search query</p>
+            <p className="text-sm mt-1">{t('functions.tryDifferent')}</p>
           )}
         </div>
       ) : (

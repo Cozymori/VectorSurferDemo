@@ -19,19 +19,19 @@ import {
     RefreshCw,
     Waves,
 } from 'lucide-react';
-import { BentoDashboard, presetLayouts, LayoutSelector, EditModeToggle } from '@/components/dashboard/BentoDashboard';
+import { BentoDashboard, EditModeToggle } from '@/components/dashboard/BentoDashboard';
 import { SurferChart } from '@/components/dashboard/SurferChart';
 import { KPICard } from '@/components/dashboard/KPICard';
-import { FunctionDistribution } from '@/components/dashboard/FunctionDistribution';
 import { RecentErrors } from '@/components/dashboard/RecentErrors';
 import { SystemStatusCard } from '@/components/dashboard/SystemStatusCard';
 import { TimeRangeSelector, FillModeSelector } from '@/components/ui/TimeRangeSelector';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useDashboardStore } from '@/lib/stores/useDashboardStore';
+import { useTranslation } from '@/lib/i18n';
 import {
     useKPIMetrics,
     useSystemStatus,
     useTimeline,
-    useFunctionDistribution,
     useRecentErrors,
     useTokenUsage,
     useErrorDistribution,
@@ -45,6 +45,7 @@ import { useQueryClient } from '@tanstack/react-query';
 // KPI Widget - Total Executions
 function KPIExecutionsWidget({ timeRange }: { timeRange: number }) {
     const { data: kpi, isLoading } = useKPIMetrics(timeRange);
+    const { t } = useTranslation();
 
     return (
         <div className="h-full flex flex-col justify-center">
@@ -52,7 +53,7 @@ function KPIExecutionsWidget({ timeRange }: { timeRange: number }) {
                 {isLoading ? '...' : formatNumber(kpi?.total_executions || 0)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-                Total executions
+                {t('dashboard.totalExecutions')}
             </p>
         </div>
     );
@@ -61,18 +62,18 @@ function KPIExecutionsWidget({ timeRange }: { timeRange: number }) {
 // KPI Widget - Success Rate
 function KPISuccessWidget({ timeRange }: { timeRange: number }) {
     const { data: kpi, isLoading } = useKPIMetrics(timeRange);
+    const { t } = useTranslation();
     const successRate = kpi?.success_rate || 0;
 
     return (
         <div className="h-full flex flex-col justify-center">
-            <p className={`text-3xl font-bold tracking-tight ${
-                successRate >= 95 ? 'text-green-500' :
-                    successRate >= 80 ? 'text-yellow-500' : 'text-red-500'
-            }`}>
+            <p className={`text-3xl font-bold tracking-tight ${successRate >= 95 ? 'text-green-500' :
+                successRate >= 80 ? 'text-yellow-500' : 'text-red-500'
+                }`}>
                 {isLoading ? '...' : formatPercentage(successRate)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-                Success rate
+                {t('dashboard.successRate')}
             </p>
         </div>
     );
@@ -81,6 +82,7 @@ function KPISuccessWidget({ timeRange }: { timeRange: number }) {
 // KPI Widget - Avg Duration
 function KPIDurationWidget({ timeRange }: { timeRange: number }) {
     const { data: kpi, isLoading } = useKPIMetrics(timeRange);
+    const { t } = useTranslation();
 
     return (
         <div className="h-full flex flex-col justify-center">
@@ -88,7 +90,7 @@ function KPIDurationWidget({ timeRange }: { timeRange: number }) {
                 {isLoading ? '...' : formatDuration(kpi?.avg_duration_ms || 0)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-                Avg duration
+                {t('dashboard.avgDuration')}
             </p>
         </div>
     );
@@ -97,18 +99,18 @@ function KPIDurationWidget({ timeRange }: { timeRange: number }) {
 // KPI Widget - Errors
 function KPIErrorsWidget({ timeRange }: { timeRange: number }) {
     const { data: kpi, isLoading } = useKPIMetrics(timeRange);
+    const { t } = useTranslation();
     const errorCount = kpi?.error_count || 0;
 
     return (
         <div className="h-full flex flex-col justify-center">
-            <p className={`text-3xl font-bold tracking-tight ${
-                errorCount > 100 ? 'text-red-500' :
-                    errorCount > 50 ? 'text-yellow-500' : 'text-foreground'
-            }`}>
+            <p className={`text-3xl font-bold tracking-tight ${errorCount > 100 ? 'text-red-500' :
+                errorCount > 50 ? 'text-yellow-500' : 'text-foreground'
+                }`}>
                 {isLoading ? '...' : formatNumber(errorCount)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-                Errors ({formatNumber(kpi?.cache_hit_count || 0)} cached)
+                {t('dashboard.errors')} ({formatNumber(kpi?.cache_hit_count || 0)} {t('dashboard.cached')})
             </p>
         </div>
     );
@@ -149,34 +151,6 @@ function TimelineWidget({ timeRange }: { timeRange: number }) {
     );
 }
 
-// Distribution Widget
-interface FunctionDistributionItem {
-    function_name?: string;
-    name?: string;
-    count: number;
-    percentage: number;
-    [key: string]: unknown;
-}
-
-function DistributionWidget({ limit = 6 }: { limit?: number }) {
-    const { data: distribution } = useFunctionDistribution(limit);
-
-    const processedData = useMemo(() => {
-        if (!distribution) return [];
-        return distribution.map((item) => {
-            const typedItem = item as FunctionDistributionItem;
-            return {
-                ...typedItem,
-                name: typedItem.function_name || typedItem.name || 'Unknown',
-            };
-        });
-    }, [distribution]);
-
-    return (
-        <FunctionDistribution data={processedData} />
-    );
-}
-
 // Recent Errors Widget
 function RecentErrorsWidget({ timeRange, limit = 5 }: { timeRange: number; limit?: number }) {
     const { data: errors } = useRecentErrors(timeRange, limit);
@@ -189,9 +163,10 @@ function RecentErrorsWidget({ timeRange, limit = 5 }: { timeRange: number; limit
 // Token Usage Widget
 function TokenUsageWidget() {
     const { data: tokenUsage, isLoading } = useTokenUsage();
+    const { t } = useTranslation();
 
     if (isLoading) {
-        return <div className="text-muted-foreground">Loading...</div>;
+        return <div className="text-muted-foreground">{t('common.loading')}</div>;
     }
 
     const categories = tokenUsage?.by_category || {};
@@ -201,7 +176,7 @@ function TokenUsageWidget() {
         <div className="space-y-4">
             <div className="text-center">
                 <p className="text-3xl font-bold">{formatNumber(total)}</p>
-                <p className="text-sm text-muted-foreground">Total Tokens</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalTokens')}</p>
             </div>
 
             <div className="space-y-2">
@@ -219,11 +194,12 @@ function TokenUsageWidget() {
 // Error Distribution Widget
 function ErrorDistributionWidget({ timeRange }: { timeRange: number }) {
     const { data: distribution } = useErrorDistribution(timeRange);
+    const { t } = useTranslation();
 
     if (!distribution || distribution.length === 0) {
         return (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-                No errors in this period
+                {t('dashboard.noErrorsInPeriod')}
             </div>
         );
     }
@@ -256,9 +232,10 @@ function ErrorDistributionWidget({ timeRange }: { timeRange: number }) {
 // Slowest Executions Widget
 function SlowestWidget({ limit = 5 }: { limit?: number }) {
     const { data: slowest, isLoading } = useSlowestExecutions(limit);
+    const { t } = useTranslation();
 
     if (isLoading) {
-        return <div className="text-muted-foreground">Loading...</div>;
+        return <div className="text-muted-foreground">{t('common.loading')}</div>;
     }
 
     const items = slowest?.items || [];
@@ -266,7 +243,7 @@ function SlowestWidget({ limit = 5 }: { limit?: number }) {
     if (items.length === 0) {
         return (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-                No data
+                {t('common.noData')}
             </div>
         );
     }
@@ -295,9 +272,9 @@ function SlowestWidget({ limit = 5 }: { limit?: number }) {
 export default function DashboardPage() {
     // Global state from Zustand - timeRangeMinutes는 이제 반응성 있는 상태값
     const { timeRangeMinutes, fillMode } = useDashboardStore();
+    const { t } = useTranslation();
 
     // Local state
-    const [currentLayout, setCurrentLayout] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
 
     const queryClient = useQueryClient();
@@ -307,147 +284,164 @@ export default function DashboardPage() {
         queryClient.invalidateQueries();
     };
 
-    // Define widgets - timeRangeMinutes를 직접 사용
+    // Define widgets with optimized grid layout (12 col grid)
+    // Row 1: KPI cards (3+3+3+3=12)
+    // Row 2: Timeline (12)
+    // Row 3: Token Usage + Recent Errors (6+6=12)
+    // Row 4: Slowest + Error Distribution (9+3=12) - 3:1 ratio
     const widgets = useMemo(() => [
         {
             id: 'kpi-executions',
-            title: 'Total Executions',
+            title: t('dashboard.totalExecutions'),
             icon: <Activity className="h-4 w-4" />,
             component: <KPIExecutionsWidget timeRange={timeRangeMinutes} />,
-            minW: 2,
+            minW: 3,
             minH: 2,
         },
         {
             id: 'kpi-success',
-            title: 'Success Rate',
+            title: t('dashboard.successRate'),
             icon: <Zap className="h-4 w-4" />,
             component: <KPISuccessWidget timeRange={timeRangeMinutes} />,
-            minW: 2,
+            minW: 3,
             minH: 2,
         },
         {
             id: 'kpi-duration',
-            title: 'Avg Duration',
+            title: t('dashboard.avgDuration'),
             icon: <Clock className="h-4 w-4" />,
             component: <KPIDurationWidget timeRange={timeRangeMinutes} />,
-            minW: 2,
+            minW: 3,
             minH: 2,
         },
         {
             id: 'kpi-errors',
-            title: 'Errors',
+            title: t('dashboard.errors'),
             icon: <AlertTriangle className="h-4 w-4" />,
             component: <KPIErrorsWidget timeRange={timeRangeMinutes} />,
-            minW: 2,
+            minW: 3,
             minH: 2,
         },
         {
             id: 'timeline',
-            title: 'Execution Timeline',
+            title: t('dashboard.executionTimeline'),
             icon: <TrendingUp className="h-4 w-4" />,
             component: <TimelineWidget timeRange={timeRangeMinutes} />,
-            minW: 4,
-            minH: 3,
-        },
-        {
-            id: 'distribution',
-            title: 'Function Distribution',
-            icon: <PieChart className="h-4 w-4" />,
-            component: <DistributionWidget />,
-            minW: 3,
-            minH: 3,
-        },
-        {
-            id: 'recent-errors',
-            title: 'Recent Errors',
-            icon: <AlertTriangle className="h-4 w-4" />,
-            component: <RecentErrorsWidget timeRange={timeRangeMinutes} />,
-            minW: 4,
-            minH: 3,
+            minW: 12,
+            minH: 4,
         },
         {
             id: 'token-usage',
-            title: 'Token Usage',
+            title: t('dashboard.tokenUsage'),
             icon: <Coins className="h-4 w-4" />,
             component: <TokenUsageWidget />,
-            minW: 3,
-            minH: 3,
+            minW: 6,
+            minH: 4,
         },
         {
-            id: 'error-distribution',
-            title: 'Error Distribution',
-            icon: <PieChart className="h-4 w-4" />,
-            component: <ErrorDistributionWidget timeRange={timeRangeMinutes} />,
-            minW: 3,
-            minH: 3,
+            id: 'recent-errors',
+            title: t('dashboard.recentErrors'),
+            icon: <AlertTriangle className="h-4 w-4" />,
+            component: <RecentErrorsWidget timeRange={timeRangeMinutes} />,
+            minW: 6,
+            minH: 4,
         },
         {
             id: 'slowest',
-            title: 'Slowest Executions',
+            title: t('dashboard.slowestExecutions'),
             icon: <Clock className="h-4 w-4" />,
             component: <SlowestWidget />,
-            minW: 4,
-            minH: 3,
+            minW: 9,
+            minH: 4,
         },
-    ], [timeRangeMinutes, fillMode]);
+        {
+            id: 'error-distribution',
+            title: t('dashboard.errorDistribution'),
+            icon: <PieChart className="h-4 w-4" />,
+            component: <ErrorDistributionWidget timeRange={timeRangeMinutes} />,
+            minW: 3,
+            minH: 4,
+        },
+    ], [timeRangeMinutes, fillMode, t]);
 
-    // Get current preset layout
-    const layout = presetLayouts[currentLayout as keyof typeof presetLayouts] || presetLayouts.overview;
+    // Explicit layout: x, y, w, h for each widget
+    const dashboardLayout = useMemo(() => [
+        // Row 1: KPIs (y=0)
+        { i: 'kpi-executions', x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+        { i: 'kpi-success', x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+        { i: 'kpi-duration', x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+        { i: 'kpi-errors', x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+        // Row 2: Timeline (y=2)
+        { i: 'timeline', x: 0, y: 2, w: 12, h: 4, minW: 6, minH: 3 },
+        // Row 3: Error Distribution + Recent Errors (y=6)
+        { i: 'error-distribution', x: 0, y: 6, w: 6, h: 4, minW: 3, minH: 3 },
+        { i: 'recent-errors', x: 6, y: 6, w: 6, h: 4, minW: 3, minH: 3 },
+        // Row 4: Slowest + Token Usage (y=10) - 3:1 ratio, h=2
+        { i: 'slowest', x: 0, y: 10, w: 9, h: 2, minW: 4, minH: 2 },
+        { i: 'token-usage', x: 9, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+    ], []);
+
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Header */}
+            {/* Header - Mobile Responsive */}
             <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
-                <div className="flex items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <Waves className="h-6 w-6 text-primary" />
-                        <div>
-                            <h1 className="text-xl font-bold tracking-tight">Dashboard</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Real-time monitoring overview
-                            </p>
+                <div className="px-4 md:px-6 py-3">
+                    {/* Single Row Layout with wrap */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Title */}
+                        <div className="flex items-center gap-2 ml-10 md:ml-0 min-w-0">
+                            <Waves className="h-5 w-5 text-primary shrink-0" />
+                            <h1 className="text-lg font-bold tracking-tight truncate">{t('dashboard.title')}</h1>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                        {/* Chart Style Selector (Global) */}
-                        <FillModeSelector />
+                        {/* Spacer */}
+                        <div className="flex-1 min-w-[20px]" />
 
-                        {/* Layout Selector */}
-                        <LayoutSelector
-                            currentLayout={currentLayout}
-                            onSelect={setCurrentLayout}
-                        />
+                        {/* Controls Group */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* Chart Style - Hidden on small */}
+                            <div className="hidden md:block">
+                                <FillModeSelector />
+                            </div>
 
-                        {/* Edit Mode Toggle */}
-                        <EditModeToggle
-                            isEditing={isEditing}
-                            onToggle={() => setIsEditing(!isEditing)}
-                        />
+                            {/* Edit Mode - Hidden on small */}
+                            <div className="hidden md:block">
+                                <EditModeToggle
+                                    isEditing={isEditing}
+                                    onToggle={() => setIsEditing(!isEditing)}
+                                />
+                            </div>
 
-                        {/* Refresh Button */}
-                        <button
-                            onClick={handleRefresh}
-                            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                            Refresh
-                        </button>
+                            {/* Refresh Button */}
+                            <button
+                                onClick={handleRefresh}
+                                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                title={t('common.refresh')}
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                            </button>
 
-                        {/* Time Range (Global) */}
-                        <TimeRangeSelector />
+                            {/* Time Range */}
+                            <TimeRangeSelector />
 
-                        {/* System Status */}
-                        <SystemStatusCard status={status} />
+                            {/* System Status - Hidden on small */}
+                            <div className="hidden lg:block">
+                                <SystemStatusCard status={status} />
+                            </div>
+
+                            {/* Language Switcher */}
+                            <LanguageSwitcher />
+                        </div>
                     </div>
                 </div>
             </header>
 
             {/* Dashboard Content */}
-            <main className="p-6">
+            <main className="p-4 md:p-6">
                 <BentoDashboard
                     widgets={widgets}
-                    initialLayout={layout}
+                    initialLayout={dashboardLayout}
                     columns={12}
                     rowHeight={80}
                     gap={16}

@@ -6,6 +6,7 @@
 
 import { Database, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 import type { SystemStatus } from '@/lib/types/api';
 
 interface SystemStatusCardProps {
@@ -14,6 +15,7 @@ interface SystemStatusCardProps {
 
 export function SystemStatusCard({ status }: SystemStatusCardProps) {
   const isConnected = status?.db_connected ?? false;
+  const { t } = useTranslation();
 
   return (
     <div
@@ -32,14 +34,9 @@ export function SystemStatusCard({ status }: SystemStatusCardProps) {
           <XCircle className="h-4 w-4 text-red-500" />
         )}
         <span className="text-sm font-medium">
-          {isConnected ? 'Connected' : 'Disconnected'}
+          {isConnected ? t('status.connected') : t('status.disconnected')}
         </span>
       </div>
-      {status && (
-        <span className="text-xs text-muted-foreground">
-          {status.registered_functions_count} functions
-        </span>
-      )}
     </div>
   );
 }
