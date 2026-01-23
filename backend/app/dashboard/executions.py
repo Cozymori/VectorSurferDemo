@@ -6,6 +6,7 @@ Based on: test_ex/search.py, test_ex/advanced_search.py
 """
 
 import logging
+import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 
@@ -222,17 +223,46 @@ class ExecutionService:
             return None
 
     def _serialize_execution(self, execution: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Ensures execution data is JSON-serializable.
-        """
-        serialized = {}
-        
-        for key, value in execution.items():
-            if isinstance(value, datetime):
-                serialized[key] = value.isoformat()
-            elif hasattr(value, '__str__'):
-                serialized[key] = str(value)
-            else:
-                serialized[key] = value
-        
-        return serialized
+            """
+            실행 로그 데이터를 JSON 직렬화하고, 프론트엔드용 필드(input/output)를 매핑합니다.
+            """
+            serialized = {}
+            input_args = {}
+
+            # VectorWave 시스템 내부 필드 (사용자 입력값이 아님)
+            SYSTEM_KEYS = {
+                'uuid', 'trace_id', 'span_id', 'parent_span_id',
+                'function_name', 'timestamp_utc', 'duration_ms',
+                'status', 'error_message', 'error_code',
+                'return_value', 'exec_source', 'function_uuid',
+                'team', 'priority', 'vector'
+            }
+
+            for key, value in execution.items():
+                # 날짜/시간 및 UUID 직렬화
+                if isinstance(value, datetime):
+                    processed_val = value.isoformat()
+                elif hasattr(value, '__str__'):
+                    processed_val = str(value)
+                else:
+                    processed_val = value
+
+                serialized[key] = processed_val
+
+                # [핵심] 시스템 키가 아닌 항목은 모두 '입력 인자'로 간주하여 수집
+                if key not in SYSTEM_KEYS and not key.startswith('_'):
+                    input_args[key] = processed_val
+
+            # [매핑 1] Output Preview: DB의 return_value를 매핑
+            if 'return_value' in serialized:
+                serialized['output_preview'] = serialized['return_value']
+
+            # [매핑 2] Input Preview: 수집된 인자들을 JSON 문자열로 변환하여 매핑
+            if input_args:
+                try:
+                    # 보기 좋게 들여쓰기 포함
+                    serialized['input_preview'] = json.dumps(input_args, indent=2, ensure_ascii=False)
+                except Exception:
+                    serialized['input_preview'] = str(input_args)
+
+            return serialized

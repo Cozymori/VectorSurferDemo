@@ -12,6 +12,8 @@ from vectorwave.database.db_search import search_functions, search_functions_hyb
 from vectorwave.utils.status import get_registered_functions
 from vectorwave.models.db_config import get_weaviate_settings
 from vectorwave.search.rag_search import search_and_answer
+from vectorwave.search.execution_search import find_executions
+from vectorwave.core.llm.factory import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -176,45 +178,105 @@ class FunctionService:
             }
 
     def ask_about_function(
-        self,
-        query: str,
-        language: str = "en"
-    ) -> Dict[str, Any]:
-        """
-        Uses RAG to answer questions about functions.
-        Based on: test_ex/rag.py - search_and_answer
-        
-        Args:
-            query: Natural language question about a function
-            language: Response language ('en' or 'ko')
-            
-        Returns:
-            {
-                "query": str,
-                "answer": str,
-                "language": str
-            }
-        """
-        try:
-            answer = search_and_answer(
-                query=query,
-                language=language
-            )
-            
-            return {
-                "query": query,
-                "answer": answer,
-                "language": language
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to answer question: {e}")
-            return {
-                "query": query,
-                "answer": f"Failed to generate answer: {str(e)}",
-                "language": language,
-                "error": str(e)
-            }
+            self,
+            query: str,
+            language: str = "en"
+        ) -> Dict[str, Any]:
+            """
+            AI에게 함수에 대해 질문합니다. (실행 상태 컨텍스트 포함)
+            """
+            try:
+                # 1. 함수 정의 검색
+                search_results = search_functions(query=query, limit=1)
+
+                if not search_results:
+                    msg = "관련 함수를 찾을 수 없습니다." if language == 'ko' else "No relevant function found."
+                    return {"query": query, "answer": msg, "language": language}
+
+                best_match = search_results[0]
+                props = best_match['properties']
+                function_name = props.get('function_name')
+
+                # 2. 실행 정보 검색 (Runtime Context)
+                # 2-1. 최근 에러 조회 (최근 24시간 or 최근 5개)
+                recent_errors = find_executions(
+                    filters={"function_name": function_name, "status": "ERROR"},
+                    sort_by="timestamp_utc",
+                    sort_ascending=False,
+                    limit=3
+                )
+
+                # 2-2. 최근 성공/성능 조회
+                recent_success = find_executions(
+                    filters={"function_name": function_name, "status": "SUCCESS"},
+                    sort_by="timestamp_utc",
+                    sort_ascending=False,
+                    limit=5
+                )
+
+                # 3. 프롬프트 컨텍스트 구성 (Augmentation)
+                context = f"""
+                [Target Function]: {function_name}
+                [Docstring]: {props.get('docstring')}
+
+                [Source Code]:
+                ```python
+                {props.get('source_code')}
+                ```
+
+                [Runtime Analysis - Recent Activity]:
+                """
+
+                # 에러 정보 주입
+                if recent_errors:
+                    context += f"\n- ⚠️ WARNING: {len(recent_errors)} recent errors found."
+                    context += f"\n- Latest Error Message: {recent_errors[0].get('error_message')}"
+                else:
+                    context += "\n- ✅ No recent errors found."
+
+                # 성능 정보 주입
+                if recent_success:
+                    total_duration = sum(float(r.get('duration_ms', 0)) for r in recent_success)
+                    avg_duration = total_duration / len(recent_success)
+                    context += f"\n- Recent Performance: Avg duration {avg_duration:.2f}ms (based on last {len(recent_success)} runs)."
+
+                # 4. LLM 호출
+                client = get_llm_client()
+                if not client:
+                    return {"query": query, "answer": "LLM Client not initialized.", "language": language}
+
+                # 언어 설정
+                lang_instruction = "Korean" if language == 'ko' else "English"
+
+                system_instruction = (
+                    "You are an intelligent DevOps assistant for VectorWave. "
+                    "Analyze the provided function code AND its recent runtime status. "
+                    "If there are errors in the runtime analysis, explain why they might be happening based on the code logic. "
+                    f"Please answer in **{lang_instruction}**."
+                )
+
+                response_text = client.create_chat_completion(
+                    model="gpt-4-turbo",
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"}
+                    ],
+                    temperature=0.2
+                )
+
+                return {
+                    "query": query,
+                    "answer": response_text,
+                    "language": language
+                }
+
+            except Exception as e:
+                logger.error(f"Failed to answer question: {e}")
+                return {
+                    "query": query,
+                    "answer": f"Error occurred during analysis: {str(e)}",
+                    "language": language
+                }
 
     def get_function_by_name(self, function_name: str) -> Optional[Dict[str, Any]]:
         """
